@@ -15,6 +15,7 @@
 #define ERROR_MSG(m)
 #endif
 
+file_descriptor fds[];
 void 
 fs_init( void) {
     block_init();

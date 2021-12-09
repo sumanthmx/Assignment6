@@ -8,6 +8,24 @@
 
 #define FS_SIZE 2048
 
+typedef struct i_node {
+    int linkCount;
+    bool_t open;
+    
+
+} i_node;
+
+typedef struct super_block {
+
+
+} super_block;
+
+typedef struct file_descriptor {
+    int fd;
+
+} file_descriptor;
+
+
 void fs_init( void);
 int fs_mkfs( void);
 int fs_open( char *fileName, int flags);
