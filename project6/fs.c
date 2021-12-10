@@ -20,7 +20,7 @@ int magicNumber = 72;
 int current_directory;
 // there are 256 file_descriptors
 file_descriptor_t fds[256];
-// allocated for = TRUE, not yet allocatedd = FALSE
+// allocated for = TRUE, not yet allocated = FALSE
 bool_t block_allocation_map[FS_SIZE];
 bool_t inode_allocation_map[FS_SIZE];
 // first block is closed cause the super block is allocated for it
@@ -73,7 +73,18 @@ fs_mkfs( void) {
 
 int 
 fs_open( char *fileName, int flags) {
-    return -1;
+    int index;
+    for (index = 0; index < 256; i++) {
+        if (!fd[index].inUse) {
+            fd[index].inUse = TRUE;
+            break;
+        }
+    }
+    // all fds in use
+    if (index == 256) {
+        return -1;
+    }
+
 }
 
 int 
