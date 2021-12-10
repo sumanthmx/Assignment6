@@ -23,7 +23,7 @@ typedef struct super_block {
     int magicNumber;
     int blockCount;
     // int type;
-    // i_node_t metadata;
+    // i_node_t root directory;
     // file_descriptor_t* dirDescriptor;
 } super_block_t;
 
