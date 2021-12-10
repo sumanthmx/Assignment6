@@ -21,9 +21,10 @@ typedef struct i_node {
 
 typedef struct super_block {
     int magicNumber;
+    // i_node_t iNodeStart;
     int blockCount;
     // int type;
-    // i_node_t root directory;
+    int root_directory_index;
     // file_descriptor_t* dirDescriptor;
 } super_block_t;
 

@@ -17,10 +17,12 @@
 
 // need magicNum to check if the file system is correctly formatted
 int magicNumber = 72;
-i_node_t current_directory;
+int current_directory;
 // there are 256 file_descriptors
 file_descriptor_t fds[256];
+// allocated for = TRUE, not yet allocatedd = FALSE
 bool_t block_allocation_map[FS_SIZE];
+bool_t inode_allocation_map[FS_SIZE];
 // first block is closed cause the super block is allocated for it
 // first block is the super block
 void fs_init( void) {
@@ -28,19 +30,15 @@ void fs_init( void) {
     char readTemp[BLOCK_SIZE];
     block_read(0, readTemp);
     super_block_t* superblock = (super_block_t *)readTemp;
+    block_allocation_map[0] = TRUE;
+    // already initialized
     if (superblock->magicNumber == magicNumber) {
-        // do shit
+        current_directory = readTemp->root_directory_index; 
     }
+    // not initialized yet
     else {
-        // do other shit
         fs_mkfs();
     }
-    block_allocation_map[0] = FALSE;
-    i_node_t root_directory;
-    root_directory.linkCount = 0;
-    root_directory.
-    int i;
-    block_write(0, );
     /* More code HERE */
 }
 
@@ -49,14 +47,23 @@ fs_mkfs( void) {
     char zeroTemp[BLOCK_SIZE];
     super_block_t superblock;
     superblock.magicNumber = magicNumber;
-    // superblock.metadata = 
 
+    // set thhe superblock
+    // seet the iNode
+    
+    // zero out the maps and blocks
     bzero_block(zeroTemp);
     for (i = 0; i < FS_SIZE; i++) {
+        inode_allocation_map[i] = FALSE;
+        block_allocation_map[i] = FALSE;
         block_write(i, zeroTemp);
     }
     block_write(0, superblock);
-    
+    // let the index of the root dir's iNode = 0
+    // first i node is for the root directory
+    superblock.root_directory_index = 0;
+    inode_allocation_map[i] = TRUE;
+
     // set all these fields to null for the file descriptor table
     for (i = 0; i < 256; i++) {
         fds[i].fd = 0;
