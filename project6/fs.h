@@ -22,10 +22,9 @@ typedef struct i_node {
 typedef struct super_block {
     int magicNumber;
     int blockCount;
-    int type;
-    i_node_t metadata;
+    // int type;
+    // i_node_t metadata;
     // file_descriptor_t* dirDescriptor;
-
 } super_block_t;
 
 typedef struct file_descriptor {

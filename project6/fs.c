@@ -25,7 +25,20 @@ bool_t block_allocation_map[FS_SIZE];
 // first block is the super block
 void fs_init( void) {
     block_init();
+    char readTemp[BLOCK_SIZE];
+    block_read(0, readTemp);
+    super_block_t* superblock = (super_block_t *)readTemp;
+    if (superblock->magicNumber == magicNumber) {
+        // do shit
+    }
+    else {
+        // do other shit
+        fs_mkfs();
+    }
     block_allocation_map[0] = FALSE;
+    i_node_t root_directory;
+    root_directory.linkCount = 0;
+    root_directory.
     int i;
     block_write(0, );
     /* More code HERE */
@@ -42,7 +55,8 @@ fs_mkfs( void) {
     for (i = 0; i < FS_SIZE; i++) {
         block_write(i, zeroTemp);
     }
-
+    block_write(0, superblock);
+    
     // set all these fields to null for the file descriptor table
     for (i = 0; i < 256; i++) {
         fds[i].fd = 0;
