@@ -7,23 +7,33 @@
 #define FS_INCLUDED
 
 #define FS_SIZE 2048
+#define ROOT_DIRECTORY_INDEX 0
 
+// size is byteCount
+// each node points to 8 blocks
 typedef struct i_node {
     int linkCount;
-    bool_t open;
-    
+    bool_t free;
+    int blocks[8];
+    int size;
 
-} i_node;
+} i_node_t;
 
 typedef struct super_block {
+    int magicNumber;
+    int blockCount;
+    int type;
+    i_node_t metadata;
+    // file_descriptor_t* dirDescriptor;
 
-
-} super_block;
+} super_block_t;
 
 typedef struct file_descriptor {
     int fd;
-
-} file_descriptor;
+    bool_t inUse;
+    int seek;
+    int flag;
+} file_descriptor_t;
 
 
 void fs_init( void);

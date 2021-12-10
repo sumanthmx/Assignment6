@@ -15,15 +15,38 @@
 #define ERROR_MSG(m)
 #endif
 
-file_descriptor fds[];
-void 
-fs_init( void) {
+// need magicNum to check if the file system is correctly formatted
+int magicNumber = 72;
+i_node_t current_directory;
+// there are 256 file_descriptors
+file_descriptor_t fds[256];
+bool_t block_allocation_map[FS_SIZE];
+// first block is closed cause the super block is allocated for it
+// first block is the super block
+void fs_init( void) {
     block_init();
+    block_allocation_map[0] = FALSE;
+    int i;
+    block_write(0, );
     /* More code HERE */
 }
 
 int
 fs_mkfs( void) {
+    char zeroTemp[BLOCK_SIZE];
+    super_block_t superblock;
+    superblock.magicNumber = magicNumber;
+    // superblock.metadata = 
+
+    bzero_block(zeroTemp);
+    for (i = 0; i < FS_SIZE; i++) {
+        block_write(i, zeroTemp);
+    }
+
+    // set all these fields to null for the file descriptor table
+    for (i = 0; i < 256; i++) {
+        fds[i].fd = 0;
+    }
     return -1;
 }
 
