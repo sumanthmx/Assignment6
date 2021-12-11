@@ -15,9 +15,14 @@
 #define ERROR_MSG(m)
 #endif
 
+// superblock is block zero
+// then we check blocks starting at 1st to find iNode
+
 // need magicNum to check if the file system is correctly formatted
-int magicNumber = 72;
-int current_directory;
+// int magicNumber = 72;
+
+// iNode of current_directory
+int current_directory_node;
 // there are 256 file_descriptors
 file_descriptor_t fds[256];
 // allocated for = TRUE, not yet allocated = FALSE
@@ -32,8 +37,8 @@ void fs_init( void) {
     super_block_t* superblock = (super_block_t *)readTemp;
     block_allocation_map[0] = TRUE;
     // already initialized
-    if (superblock->magicNumber == magicNumber) {
-        current_directory = readTemp->root_directory_index; 
+    if (superblock->magicNumber == 72) {
+        current_directory_node = readTemp->root_node_index; 
     }
     // not initialized yet
     else {
@@ -46,7 +51,7 @@ int
 fs_mkfs( void) {
     char zeroTemp[BLOCK_SIZE];
     super_block_t superblock;
-    superblock.magicNumber = magicNumber;
+    superblock.magicNumber = 72;
 
     // set thhe superblock
     // seet the iNode
@@ -59,11 +64,14 @@ fs_mkfs( void) {
         block_write(i, zeroTemp);
     }
     block_write(0, superblock);
+    block_allocation_map[0] = TRUE;
     // let the index of the root dir's iNode = 0
     // first i node is for the root directory
-    superblock.root_directory_index = 0;
-    inode_allocation_map[i] = TRUE;
+    superblock.root_node_index = 0;
+    inode_allocation_map[0] = TRUE;
 
+    // first block (index 0) is super node.... next few blocks go to iNode.. then we do the maps
+    int mapBlock = (sizeof(i_node_t) * FS_SIZE / BLOCK_SIZE) + 2;
     // set all these fields to null for the file descriptor table
     for (i = 0; i < 256; i++) {
         fd[i].seek = 0;
@@ -88,9 +96,20 @@ fs_open( char *fileName, int flags) {
     }
     char tempBlock[BLOCK_SIZE];
     // read in the current directory from the disk
-    block_read(current_directory, tempBlock);
+    // add 1 cause first is super (no iNodes in 1st one)
+    int blockToRead = (current_directory_node * sizeof(i_node_t)) / BLOCK_SIZE;
+    block_read(1 + blockToRead, tempBlock);
+    i_node_t *directoryNode = (i_node_t *)&tempBlock[(current_directory_node * sizeof(i_node_t)) - (blockToRead * BLOCK_SIZE)];
+    blockToRead = directoryNode->blockIndex;
+    int size = directoryNode->size;
+    block_read(blockToRead, tempBlock);
+    int length = size / sizeof(dir_entry_t);
     
-
+    (dir_entry_t *)dirEntries[length] = (dir_entry_t *)tempBlock;
+    int i;
+    for (i = 0; i < length; i++) {
+        if (same_string(dirEntries[i]->name), fileName))
+    }
 }
 
 int 

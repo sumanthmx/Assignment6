@@ -13,6 +13,7 @@
 // each node points to 8 blocks
 typedef struct i_node {
     int linkCount;
+    int blockIndex;
     bool_t free;
     int blocks[8];
     int size;
@@ -24,7 +25,7 @@ typedef struct super_block {
     // i_node_t iNodeStart;
     int blockCount;
     // int type;
-    int root_directory_index;
+    int root_node_index;
     // file_descriptor_t* dirDescriptor;
 } super_block_t;
 
