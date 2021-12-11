@@ -16,7 +16,8 @@
 #endif
 
 // superblock is block zero
-// then we check blocks starting at 1st to find iNode
+// then we store bit allocation maps
+// then we check blocks starting at 2 to find iNode
 
 // need magicNum to check if the file system is correctly formatted
 // int magicNumber = 72;
@@ -70,8 +71,8 @@ fs_mkfs( void) {
     superblock.root_node_index = 0;
     inode_allocation_map[0] = TRUE;
 
-    // first block (index 0) is super node.... next few blocks go to iNode.. then we do the maps
-    int mapBlock = (sizeof(i_node_t) * FS_SIZE / BLOCK_SIZE) + 2;
+    // allocate maps in the block at index 1 [DO NOW!!!]
+    
     // set all these fields to null for the file descriptor table
     for (i = 0; i < 256; i++) {
         fd[i].seek = 0;
@@ -96,9 +97,9 @@ fs_open( char *fileName, int flags) {
     }
     char tempBlock[BLOCK_SIZE];
     // read in the current directory from the disk
-    // add 1 cause first is super (no iNodes in 1st one)
+    // add 2 cause first is super (no iNodes in 1st one) and second is maps
     int blockToRead = (current_directory_node * sizeof(i_node_t)) / BLOCK_SIZE;
-    block_read(1 + blockToRead, tempBlock);
+    block_read(2 + blockToRead, tempBlock);
     i_node_t *directoryNode = (i_node_t *)&tempBlock[(current_directory_node * sizeof(i_node_t)) - (blockToRead * BLOCK_SIZE)];
     blockToRead = directoryNode->blockIndex;
     int size = directoryNode->size;
@@ -107,6 +108,9 @@ fs_open( char *fileName, int flags) {
     
     (dir_entry_t *)dirEntries[length] = (dir_entry_t *)tempBlock;
     int i;
+    bool_t foundString;
+    if (same_string(".", fileName))
+    else if (same_string("..", fileName))
     for (i = 0; i < length; i++) {
         if (same_string(dirEntries[i]->name), fileName))
     }
@@ -117,6 +121,14 @@ fs_close( int fd) {
     if (!fds[fd].inUse) return -1;
     else {
         fds[fd].inUse = FALSE;
+        char tempBlock[BLOCK_SIZE];
+        int blockToRead = (fds[fd].iNode * sizeof(i_node_t)) / BLOCK_SIZE;
+        block_read(2 + blockToRead, tempBlock);
+        i_node_t *node = (i_node_t *)&tempBlock[(fds[fd].iNode * sizeof(i_node_t)) - (blockToRead * BLOCK_SIZE)];
+        node->
+        if (node->linkCount == 0) {
+
+        }
         bzero(fds[fd], )
     }
     return -1;
@@ -170,4 +182,5 @@ fs_stat( char *fileName, fileStat *buf) {
     buf->
     return -1;
 }
+
 
