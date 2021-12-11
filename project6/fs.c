@@ -66,7 +66,9 @@ fs_mkfs( void) {
 
     // set all these fields to null for the file descriptor table
     for (i = 0; i < 256; i++) {
-        fds[i].fd = 0;
+        fd[i].seek = 0;
+        fd[i].flag = 0;
+        fd[i].inUse = FALSE;
     }
     return -1;
 }
@@ -75,8 +77,8 @@ int
 fs_open( char *fileName, int flags) {
     int index;
     for (index = 0; index < 256; i++) {
-        if (!fd[index].inUse) {
-            fd[index].inUse = TRUE;
+        if (!fds[index].inUse) {
+            fds[index].inUse = TRUE;
             break;
         }
     }
@@ -84,21 +86,33 @@ fs_open( char *fileName, int flags) {
     if (index == 256) {
         return -1;
     }
+    char tempBlock[BLOCK_SIZE];
+    // read in the current directory from the disk
+    block_read(current_directory, tempBlock);
+    
 
 }
 
 int 
 fs_close( int fd) {
+    if (!fds[fd].inUse) return -1;
+    else {
+        fds[fd].inUse = FALSE;
+        bzero(fds[fd], )
+    }
     return -1;
 }
 
 int 
 fs_read( int fd, char *buf, int count) {
+    if (count == 0) return 0;
+
     return -1;
 }
     
 int 
 fs_write( int fd, char *buf, int count) {
+    if (count == 0) return 0;
     return -1;
 }
 
@@ -134,6 +148,7 @@ fs_unlink( char *fileName) {
 
 int 
 fs_stat( char *fileName, fileStat *buf) {
+    buf->
     return -1;
 }
 

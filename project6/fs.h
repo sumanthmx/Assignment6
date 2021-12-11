@@ -29,11 +29,16 @@ typedef struct super_block {
 } super_block_t;
 
 typedef struct file_descriptor {
-    int fd;
     bool_t inUse;
     int seek;
     int flag;
 } file_descriptor_t;
+
+typedef struct dir_entry {
+    char name[32];
+    int nameLength;
+    int i_node;
+} dir_entry_t;
 
 
 void fs_init( void);
