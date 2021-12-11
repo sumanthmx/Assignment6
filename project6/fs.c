@@ -27,8 +27,9 @@ int current_directory_node;
 // there are 256 file_descriptors
 file_descriptor_t fds[256];
 // allocated for = TRUE, not yet allocated = FALSE
-bool_t block_allocation_map[FS_SIZE];
-bool_t inode_allocation_map[FS_SIZE];
+uint8_t block_allocation_map[256];
+uint8_t inode_allocation_map[256];
+
 // first block is closed cause the super block is allocated for it
 // first block is the super block
 void fs_init( void) {
@@ -70,9 +71,9 @@ fs_mkfs( void) {
     // first i node is for the root directory
     superblock.root_node_index = 0;
     inode_allocation_map[0] = TRUE;
-
+    char
     // allocate maps in the block at index 1 [DO NOW!!!]
-    
+    bcopy
     // set all these fields to null for the file descriptor table
     for (i = 0; i < 256; i++) {
         fd[i].seek = 0;
