@@ -14,7 +14,8 @@
 typedef struct i_node {
     int linkCount;
     int openCount;
-    // int blockIndex;
+    int blocksUsed;
+    int blockIndex;
     // bool_t free;
     int blocks[8];
     int size;
@@ -25,7 +26,7 @@ typedef struct i_node {
 typedef struct super_block {
     int magicNumber;
     // i_node_t iNodeStart;
-    int blockCount;
+    // int blockCount;
     // int type;
     int root_node_index;
     // file_descriptor_t* dirDescriptor;

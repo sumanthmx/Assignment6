@@ -117,6 +117,7 @@ fs_open( char *fileName, int flags) {
     block_read(blockToRead, tempBlock);
     int length = size / sizeof(dir_entry_t);
     
+    // FIX THIS
     dirEntries = (dir_entry_t *)tempBlock;
     int i;
 
@@ -167,6 +168,9 @@ fs_open( char *fileName, int flags) {
             newNode->linkCount = 0;
             newNode->size = 0;
             newNode->type = FILE_TYPE;
+            newNode->blockIndex = 2 + blockToRead;
+            newNode->blocksUsed = 0;
+            // ask about number of BlocksUsed!!!
             bcopy((char *)&newNode, (char *)&tempBlock[fs_blockOffset(iNode, blockToRead)], sizeof(i_node_t));
             block_write(2 + blockToRead, tempBlock);
         }
@@ -193,7 +197,8 @@ fs_close( int fd) {
         char nodeBlock[sizeof(i_node_t)];
         int blockToRead = fs_inodeBlock(fds[fd].iNode);
         block_read(2 + blockToRead, tempBlock);
-        i_node_t *node = (i_node_t *)&tempBlock[fs_blockOffset(fds[fd].iNode, blockToRead)];
+        bcopy((char *)&tempBlock[fs_blockOffset(fds[fd].iNode, blockToRead)], nodeBlock, sizeof(i_node_t));
+        i_node_t *node = (i_node_t *)&nodeBlock;
         node->
         if (node->linkCount == 0) {
 
@@ -207,7 +212,7 @@ int
 fs_read( int fd, char *buf, int count) {
     if (count == 0) return 0;
     else {
-        fds
+        fds[fd]
     }
     return -1;
 }
@@ -250,7 +255,40 @@ fs_unlink( char *fileName) {
 
 int 
 fs_stat( char *fileName, fileStat *buf) {
-    buf->
+    char tempBlock[BLOCK_SIZE];
+    char nodeBlock[sizeof(i_node_t)];
+    (dir_entry_t *)dirEntries[length];
+    // read in the current directory from the disk
+    // add 2 cause first is super (no iNodes in 1st one) and second is maps
+    int blockToRead = fs_inodeBlock(current_directory_node);
+    block_read(2 + blockToRead, tempBlock);
+    bcopy((char *)&tempBlock[fs_blockOffset(current_directory_node, blockToRead)], nodeBlock, sizeof(i_node_t));
+    i_node_t *directoryNode = (i_node_t *)&nodeBlock;
+
+    // find the block containing the directory
+    blockToRead = directoryNode->blockIndex;
+    int size = directoryNode->size;
+    block_read(blockToRead, tempBlock);
+    int length = size / sizeof(dir_entry_t);
+    
+    // FIX THIS (ask)
+    dirEntries = (dir_entry_t *)tempBlock;
+    int i;
+    for (i = 0; i < length; i++) {
+        if (same_string(dirEntries[i]->name), fileName)) {
+            buf->iNode = dirEntries[i]->iNode;
+            blockToRead = fs_inodeBlock(dirEntries[i]->iNode);
+            block_read(2 + blockToRead, tempBlock);
+            bcopy((char *)&tempBlock[fs_blockOffset(dirEntries[i]->iNode, blockToRead)], nodeBlock, sizeof(i_node_t));
+            i_node_t *node = (i_node_t *)&nodeBlock;
+            buf->type = node->type;
+            buf->links = node->linkCount;
+            buf->size = node->size;
+            buf->numBlocks = node->blocksUsed;
+            return 0;
+        }
+    }
+    // filename not found in current directory
     return -1;
 }
 
