@@ -125,7 +125,7 @@ fs_open( char *fileName, int flags) {
     short type;
     // do not open directories if not RDONLY
     for (i = 0; i < length; i++) {
-        if (same_string(dirEntries[i]->name), fileName)) {
+        if (same_string(dirEntries[i]->name, fileName)) {
             type = dirEntries[i]->type;
             if (type == DIRECTORY && flags != FS_O_RDONLY) return -1;
             blockToRead = fs_inodeBlock(dirEntries[i]->iNode);
@@ -150,10 +150,11 @@ fs_open( char *fileName, int flags) {
             if (inode_allocation_map[i] != 0xFF) {
                 int j;
                 for (j = 0; j < 8; j++) {
-                    if (inode_allocation_map[i] && (1 << j) == 0)
+                    if (inode_allocation_map[i] && (1 << j) == 0) {
                         inode_allocation_map[i] | (1 << j);
                         iNode = 8*i + j;
                         break;
+                    }
                 }
             }
         }
@@ -212,6 +213,7 @@ int
 fs_read( int fd, char *buf, int count) {
     if (count == 0) return 0;
     else {
+        // what do i read and where???
         fds[fd]
     }
     return -1;
@@ -240,6 +242,39 @@ fs_rmdir( char *fileName) {
 
 int 
 fs_cd( char *dirName) {
+    char tempBlock[BLOCK_SIZE];
+    char nodeBlock[sizeof(i_node_t)];
+    (dir_entry_t *)dirEntries[length];
+    // read in the current directory from the disk
+    // add 2 cause first is super (no iNodes in 1st one) and second is maps
+    int blockToRead = fs_inodeBlock(current_directory_node);
+    block_read(2 + blockToRead, tempBlock);
+    bcopy((char *)&tempBlock[fs_blockOffset(current_directory_node, blockToRead)], nodeBlock, sizeof(i_node_t));
+    i_node_t *directoryNode = (i_node_t *)&nodeBlock;
+
+    // find the block containing the directory
+    blockToRead = directoryNode->blockIndex;
+    int size = directoryNode->size;
+    block_read(blockToRead, tempBlock);
+    int length = size / sizeof(dir_entry_t);
+    
+    // FIX THIS (ask)
+    dirEntries = (dir_entry_t *)tempBlock;
+    int i;
+    for (i = 0; i < length; i++) {
+        if (same_string(dirEntries[i]->name, fileName)) {
+            blockToRead = fs_inodeBlock(dirEntries[i]->iNode);
+            block_read(2 + blockToRead, tempBlock);
+            bcopy((char *)&tempBlock[fs_blockOffset(dirEntries[i]->iNode, blockToRead)], nodeBlock, sizeof(i_node_t));
+            i_node_t *node = (i_node_t *)&nodeBlock;
+            // check if this is even a (valid) directory
+            if (node->type != DIRECTORY) return -1;
+            else {
+                current_directory_node = dirEntries[i]->iNode;
+            }
+        }
+    }
+    // filename not found in current directory 
     return -1;
 }
 
