@@ -14,8 +14,8 @@
 typedef struct i_node {
     int linkCount;
     int openCount;
-    int blockIndex;
-    bool_t free;
+    // int blockIndex;
+    // bool_t free;
     int blocks[8];
     int size;
     short type;

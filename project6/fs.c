@@ -22,6 +22,8 @@
 // need magicNum to check if the file system is correctly formatted
 // int magicNumber = 72;
 
+// ORDER: mkfs, stat, open, read, ls, write, close, link, unlink, lseek, unclose
+
 // iNode of current_directory
 int current_directory_node;
 // there are 256 file_descriptors. these are not persisted though, so no need to store them in disk.
@@ -38,7 +40,7 @@ void fs_init( void) {
     char readTemp[BLOCK_SIZE];
     block_read(0, readTemp);
     super_block_t* superblock = (super_block_t *)readTemp;
-    block_allocation_map[0] = TRUE;
+    block_allocation_map[0] = 1;
     // already initialized
     if (superblock->magicNumber == 72) {
         current_directory_node = superblock->root_node_index; 
@@ -100,6 +102,7 @@ fs_open( char *fileName, int flags) {
         return -1;
     }
     char tempBlock[BLOCK_SIZE];
+    (dir_entry_t *)dirEntries[length];
     // read in the current directory from the disk
     // add 2 cause first is super (no iNodes in 1st one) and second is maps
     int blockToRead = fs_inodeBlock(current_directory_node);
@@ -112,8 +115,9 @@ fs_open( char *fileName, int flags) {
     block_read(blockToRead, tempBlock);
     int length = size / sizeof(dir_entry_t);
     
-    (dir_entry_t *)dirEntries[length] = (dir_entry_t *)tempBlock;
+    dirEntries = (dir_entry_t *)tempBlock;
     int i;
+
     bool_t foundString = FALSE;
     short type;
     // do not open directories if not RDONLY
@@ -123,33 +127,54 @@ fs_open( char *fileName, int flags) {
             if (type == DIRECTORY && flags != FS_O_RDONLY) return -1;
             blockToRead = fs_inodeBlock(dirEntries[i]->iNode);
             block_read(2 + blockToRead, tempBlock);
-            i_node_t *directoryNode = (i_node_t *)&tempBlock[(dirEntries[i]->iNode * sizeof(i_node_t)) - (blockToRead * BLOCK_SIZE)];
-            directoryNode->openCount++;
-            bcopy((char *)&directoryNode, (char *)&tempBlock[(dirEntries[i]->iNode * sizeof(i_node_t)) - (blockToRead * BLOCK_SIZE)], sizeof(i_node_t));
+            i_node_t *tempNode = (i_node_t *)&tempBlock[(dirEntries[i]->iNode * sizeof(i_node_t)) - (blockToRead * BLOCK_SIZE)];
+            tempNode->openCount++;
+            bcopy((char *)&tempNode, (char *)&tempBlock[(dirEntries[i]->iNode * sizeof(i_node_t)) - (blockToRead * BLOCK_SIZE)], sizeof(i_node_t));
             block_write(2 + blockToRead, tempBlock);
             foundString = TRUE;
-            break;
         }
     }
     if (!foundString && flags == FS_O_RDONLY) {
         return -1;
     }
+    // if you have not found a new string, then you have found a new file
     if (!foundString) {
         type = FILE_TYPE;
-        // find iNode
+        int iNode = 0;
+        // find new iNode
         for (i = 0; i < 256; i++) {
             if (inode_allocation_map[i] != 0xFF) {
-                inode_allocation_map[i] << 1;
-                inode_allocation_map[i] | 1;
-                break;
+                int j;
+                for (j = 0; j < 8; j++) {
+                    if (inode_allocation_map[i] && (1 << j) == 0)
+                        inode_allocation_map[i] | (1 << j);
+                        iNode = 8*i + j;
+                        break;
+                }
             }
         }
         if (i == 256) return -1;
+        else {
+            blockToRead = fs_inodeBlock(iNode);
+            block_read(2 + blockToRead, tempBlock);
+            i_node_t *newNode = (i_node_t *)&tempBlock[(iNode * sizeof(i_node_t)) - (blockToRead * BLOCK_SIZE)];
+            newNode->openCount = 1;
+            newNode->linkCount = 0;
+            newNode->size = 0;
+            newNode->type = FILE_TYPE;
+            bcopy((char *)&newNode, (char *)&tempBlock[(iNode * sizeof(i_node_t)) - (blockToRead * BLOCK_SIZE)], sizeof(i_node_t));
+            block_write(2 + blockToRead, tempBlock);
+        }
+        // unable to create new iNode
     }
     fds[index].inUse = TRUE;
     fds[index].name = fileName;
     fds[index].type = type;
     fds[index].flag = flags;
+    // copy the new file descriptor into the directory's block
+    block_read(directoryNode->blockIndex, tempBlock);
+    bcopy((char *)fds[index], (char *)&tempBlock[length], sizeof(dir_entry_t));
+    block_write(directoryNode->blockIndex, tempBlock);
     return 0;
     }
 }
