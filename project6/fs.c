@@ -108,7 +108,7 @@ fs_open( char *fileName, int flags) {
     // add 2 cause first is super (no iNodes in 1st one) and second is maps
     int blockToRead = fs_inodeBlock(current_directory_node);
     block_read(2 + blockToRead, tempBlock);
-    bcopy((char *)&tempBlock[(current_directory_node * sizeof(i_node_t)) - (blockToRead * BLOCK_SIZE)], nodeBlock, sizeof(i_node_t));
+    bcopy((char *)&tempBlock[fs_blockOffset(current_directory_node, blockToRead)], nodeBlock, sizeof(i_node_t));
     i_node_t *directoryNode = (i_node_t *)&nodeBlock;
 
     // find the block containing the directory
@@ -129,10 +129,10 @@ fs_open( char *fileName, int flags) {
             if (type == DIRECTORY && flags != FS_O_RDONLY) return -1;
             blockToRead = fs_inodeBlock(dirEntries[i]->iNode);
             block_read(2 + blockToRead, tempBlock);
-            bcopy((char *)&tempBlock[(dirEntries[i]->iNode * sizeof(i_node_t)) - (blockToRead * BLOCK_SIZE)], nodeBlock, sizeof(i_node_t));
+            bcopy((char *)&tempBlock[fs_blockOffset(dirEntries[i]->iNode, blockToRead)], nodeBlock, sizeof(i_node_t));
             i_node_t *tempNode = (i_node_t *)&nodeBlock;
             tempNode->openCount++;
-            bcopy((char *)&tempNode, (char *)&tempBlock[(dirEntries[i]->iNode * sizeof(i_node_t)) - (blockToRead * BLOCK_SIZE)], sizeof(i_node_t));
+            bcopy((char *)&tempNode, (char *)&tempBlock[fs_blockOffset(dirEntries[i]->iNode, blockToRead)], sizeof(i_node_t));
             block_write(2 + blockToRead, tempBlock);
             foundString = TRUE;
         }
@@ -161,13 +161,13 @@ fs_open( char *fileName, int flags) {
             blockToRead = fs_inodeBlock(iNode);
             block_read(2 + blockToRead, tempBlock);
 
-            bcopy((char *)&tempBlock[(iNode * sizeof(i_node_t)) - (blockToRead * BLOCK_SIZE)], nodeBlock, sizeof(i_node_t));
+            bcopy((char *)&tempBlock[fs_blockOffset(iNode, blockToRead)], nodeBlock, sizeof(i_node_t));
             i_node_t *newNode = (i_node_t *)&nodeBlock;
             newNode->openCount = 1;
             newNode->linkCount = 0;
             newNode->size = 0;
             newNode->type = FILE_TYPE;
-            bcopy((char *)&newNode, (char *)&tempBlock[(iNode * sizeof(i_node_t)) - (blockToRead * BLOCK_SIZE)], sizeof(i_node_t));
+            bcopy((char *)&newNode, (char *)&tempBlock[fs_blockOffset(iNode, blockToRead)], sizeof(i_node_t));
             block_write(2 + blockToRead, tempBlock);
         }
         // unable to create new iNode
@@ -190,9 +190,10 @@ fs_close( int fd) {
     else {
         fds[fd].inUse = FALSE;
         char tempBlock[BLOCK_SIZE];
+        char nodeBlock[sizeof(i_node_t)];
         int blockToRead = fs_inodeBlock(fds[fd].iNode);
         block_read(2 + blockToRead, tempBlock);
-        i_node_t *node = (i_node_t *)&tempBlock[(fds[fd].iNode * sizeof(i_node_t)) - (blockToRead * BLOCK_SIZE)];
+        i_node_t *node = (i_node_t *)&tempBlock[fs_blockOffset(fds[fd].iNode, blockToRead)];
         node->
         if (node->linkCount == 0) {
 
@@ -257,6 +258,12 @@ fs_stat( char *fileName, fileStat *buf) {
 // this 2 less than the real index, as the iNodes are allocated starting in the third block
 static int fs_inodeBlock(int iNode) {
     return ((iNode * sizeof(i_node_t)) / BLOCK_SIZE);
+}
+
+// helper function to find offset of iNode into its block
+// the block passed in here is 2 less than the real index, as the iNodes are allocated starting in the third block
+static int fs_blockOffset(int iNode, int block) {
+    return (iNode * sizeof(i_node_t)) - (block * BLOCK_SIZE);
 }
 
 
