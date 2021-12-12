@@ -102,12 +102,14 @@ fs_open( char *fileName, int flags) {
         return -1;
     }
     char tempBlock[BLOCK_SIZE];
+    char nodeBlock[sizeof(i_node_t)];
     (dir_entry_t *)dirEntries[length];
     // read in the current directory from the disk
     // add 2 cause first is super (no iNodes in 1st one) and second is maps
     int blockToRead = fs_inodeBlock(current_directory_node);
     block_read(2 + blockToRead, tempBlock);
-    i_node_t *directoryNode = (i_node_t *)&tempBlock[(current_directory_node * sizeof(i_node_t)) - (blockToRead * BLOCK_SIZE)];
+    bcopy((char *)&tempBlock[(current_directory_node * sizeof(i_node_t)) - (blockToRead * BLOCK_SIZE)], nodeBlock, sizeof(i_node_t));
+    i_node_t *directoryNode = (i_node_t *)&nodeBlock;
 
     // find the block containing the directory
     blockToRead = directoryNode->blockIndex;
@@ -127,7 +129,8 @@ fs_open( char *fileName, int flags) {
             if (type == DIRECTORY && flags != FS_O_RDONLY) return -1;
             blockToRead = fs_inodeBlock(dirEntries[i]->iNode);
             block_read(2 + blockToRead, tempBlock);
-            i_node_t *tempNode = (i_node_t *)&tempBlock[(dirEntries[i]->iNode * sizeof(i_node_t)) - (blockToRead * BLOCK_SIZE)];
+            bcopy((char *)&tempBlock[(dirEntries[i]->iNode * sizeof(i_node_t)) - (blockToRead * BLOCK_SIZE)], nodeBlock, sizeof(i_node_t));
+            i_node_t *tempNode = (i_node_t *)&nodeBlock;
             tempNode->openCount++;
             bcopy((char *)&tempNode, (char *)&tempBlock[(dirEntries[i]->iNode * sizeof(i_node_t)) - (blockToRead * BLOCK_SIZE)], sizeof(i_node_t));
             block_write(2 + blockToRead, tempBlock);
@@ -157,7 +160,9 @@ fs_open( char *fileName, int flags) {
         else {
             blockToRead = fs_inodeBlock(iNode);
             block_read(2 + blockToRead, tempBlock);
-            i_node_t *newNode = (i_node_t *)&tempBlock[(iNode * sizeof(i_node_t)) - (blockToRead * BLOCK_SIZE)];
+
+            bcopy((char *)&tempBlock[(iNode * sizeof(i_node_t)) - (blockToRead * BLOCK_SIZE)], nodeBlock, sizeof(i_node_t));
+            i_node_t *newNode = (i_node_t *)&nodeBlock;
             newNode->openCount = 1;
             newNode->linkCount = 0;
             newNode->size = 0;
@@ -173,7 +178,7 @@ fs_open( char *fileName, int flags) {
     fds[index].flag = flags;
     // copy the new file descriptor into the directory's block
     block_read(directoryNode->blockIndex, tempBlock);
-    bcopy((char *)fds[index], (char *)&tempBlock[length], sizeof(dir_entry_t));
+    bcopy((char *)&fds[index], (char *)&tempBlock[length], sizeof(file_descriptor_t));
     block_write(directoryNode->blockIndex, tempBlock);
     return 0;
     }
@@ -200,7 +205,9 @@ fs_close( int fd) {
 int 
 fs_read( int fd, char *buf, int count) {
     if (count == 0) return 0;
-
+    else {
+        fds
+    }
     return -1;
 }
     
