@@ -230,6 +230,8 @@ fs_lseek( int fd, int offset) {
     return -1;
 }
 
+// current directory: "."
+// parent directory: ".."
 int 
 fs_mkdir( char *fileName) {
     return -1;
