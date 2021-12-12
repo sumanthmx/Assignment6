@@ -24,9 +24,10 @@
 
 // iNode of current_directory
 int current_directory_node;
-// there are 256 file_descriptors
+// there are 256 file_descriptors. these are not persisted though, so no need to store them in disk.
 file_descriptor_t fds[256];
-// allocated for = TRUE, not yet allocated = FALSE
+// allocated for = 1, not yet allocated = 0
+// note that each 
 uint8_t block_allocation_map[256];
 uint8_t inode_allocation_map[256];
 
@@ -40,7 +41,7 @@ void fs_init( void) {
     block_allocation_map[0] = TRUE;
     // already initialized
     if (superblock->magicNumber == 72) {
-        current_directory_node = readTemp->root_node_index; 
+        current_directory_node = superblock->root_node_index; 
     }
     // not initialized yet
     else {
@@ -65,15 +66,20 @@ fs_mkfs( void) {
         block_allocation_map[i] = FALSE;
         block_write(i, zeroTemp);
     }
-    block_write(0, superblock);
-    block_allocation_map[0] = TRUE;
+    block_write(0, (char *)superblock);
+    block_allocation_map[0] = 1;
     // let the index of the root dir's iNode = 0
     // first i node is for the root directory
     superblock.root_node_index = 0;
-    inode_allocation_map[0] = TRUE;
-    char
-    // allocate maps in the block at index 1 [DO NOW!!!]
-    bcopy
+    inode_allocation_map[0] = 1;
+    
+    char maps[512];
+
+    // allocate maps in the block at index 1
+    // inodes and then blocks
+    bcopy(inode_allocation_map, maps, 256);
+    bcopy(block_allocation_map, (char *)&maps[256], 256);
+    block_write(1, maps);
     // set all these fields to null for the file descriptor table
     for (i = 0; i < 256; i++) {
         fd[i].seek = 0;
@@ -87,10 +93,7 @@ int
 fs_open( char *fileName, int flags) {
     int index;
     for (index = 0; index < 256; i++) {
-        if (!fds[index].inUse) {
-            fds[index].inUse = TRUE;
-            break;
-        }
+        if (!fds[index].inUse) break;
     }
     // all fds in use
     if (index == 256) {
@@ -99,9 +102,11 @@ fs_open( char *fileName, int flags) {
     char tempBlock[BLOCK_SIZE];
     // read in the current directory from the disk
     // add 2 cause first is super (no iNodes in 1st one) and second is maps
-    int blockToRead = (current_directory_node * sizeof(i_node_t)) / BLOCK_SIZE;
+    int blockToRead = fs_inodeBlock(current_directory_node);
     block_read(2 + blockToRead, tempBlock);
     i_node_t *directoryNode = (i_node_t *)&tempBlock[(current_directory_node * sizeof(i_node_t)) - (blockToRead * BLOCK_SIZE)];
+
+    // find the block containing the directory
     blockToRead = directoryNode->blockIndex;
     int size = directoryNode->size;
     block_read(blockToRead, tempBlock);
@@ -109,11 +114,43 @@ fs_open( char *fileName, int flags) {
     
     (dir_entry_t *)dirEntries[length] = (dir_entry_t *)tempBlock;
     int i;
-    bool_t foundString;
-    if (same_string(".", fileName))
-    else if (same_string("..", fileName))
+    bool_t foundString = FALSE;
+    short type;
+    // do not open directories if not RDONLY
     for (i = 0; i < length; i++) {
-        if (same_string(dirEntries[i]->name), fileName))
+        if (same_string(dirEntries[i]->name), fileName)) {
+            type = dirEntries[i]->type;
+            if (type == DIRECTORY && flags != FS_O_RDONLY) return -1;
+            blockToRead = fs_inodeBlock(dirEntries[i]->iNode);
+            block_read(2 + blockToRead, tempBlock);
+            i_node_t *directoryNode = (i_node_t *)&tempBlock[(dirEntries[i]->iNode * sizeof(i_node_t)) - (blockToRead * BLOCK_SIZE)];
+            directoryNode->openCount++;
+            bcopy((char *)&directoryNode, (char *)&tempBlock[(dirEntries[i]->iNode * sizeof(i_node_t)) - (blockToRead * BLOCK_SIZE)], sizeof(i_node_t));
+            block_write(2 + blockToRead, tempBlock);
+            foundString = TRUE;
+            break;
+        }
+    }
+    if (!foundString && flags == FS_O_RDONLY) {
+        return -1;
+    }
+    if (!foundString) {
+        type = FILE_TYPE;
+        // find iNode
+        for (i = 0; i < 256; i++) {
+            if (inode_allocation_map[i] != 0xFF) {
+                inode_allocation_map[i] << 1;
+                inode_allocation_map[i] | 1;
+                break;
+            }
+        }
+        if (i == 256) return -1;
+    }
+    fds[index].inUse = TRUE;
+    fds[index].name = fileName;
+    fds[index].type = type;
+    fds[index].flag = flags;
+    return 0;
     }
 }
 
@@ -123,7 +160,7 @@ fs_close( int fd) {
     else {
         fds[fd].inUse = FALSE;
         char tempBlock[BLOCK_SIZE];
-        int blockToRead = (fds[fd].iNode * sizeof(i_node_t)) / BLOCK_SIZE;
+        int blockToRead = fs_inodeBlock(fds[fd].iNode);
         block_read(2 + blockToRead, tempBlock);
         i_node_t *node = (i_node_t *)&tempBlock[(fds[fd].iNode * sizeof(i_node_t)) - (blockToRead * BLOCK_SIZE)];
         node->
@@ -182,6 +219,12 @@ int
 fs_stat( char *fileName, fileStat *buf) {
     buf->
     return -1;
+}
+
+// helper function to find block that contains iNode
+// this 2 less than the real index, as the iNodes are allocated starting in the third block
+static int fs_inodeBlock(int iNode) {
+    return ((iNode * sizeof(i_node_t)) / BLOCK_SIZE);
 }
 
 

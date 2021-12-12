@@ -18,6 +18,7 @@ typedef struct i_node {
     bool_t free;
     int blocks[8];
     int size;
+    short type;
 
 } i_node_t;
 
