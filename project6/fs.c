@@ -76,34 +76,58 @@ fs_mkfs( void) {
     bcopy((unsigned char*)&superblock, (unsigned char *)&temp, sizeof(super_block_t));
     block_write(0, temp);
     bzero_block(temp);
-    block_allocation_map[0] = 3;
+    // block_allocation_map[0] = 3;
     // allocate a block for bitmaps (1) and superBlock (0)
+
+    // there are FS_SIZE iNodes and each BLOCK has 512 bytes
+    // each block has BLOCK_SIZE / sizeof(i_node_t) = 512/32 = 16 iNodes
+    // this gives: num of blocks holding iNodes = iNodes / (iNodes per Block) = FS_SIZE / 16 = 128 blocks
+    // hence, we allocate 128 blocks for iNodes:
+    for (i = 0; i < 16; i++) {
+        block_allocation_map[i] = 0xFF;
+    }
+    block_allocation_map[16] = 3;
 
     // let the index of the root dir's iNode = 0
     // first i node is for the root directory
     superblock.root_node_index = 0;
     inode_allocation_map[0] = 1;
     
-    
-    i_node_t *newNode;
-    newNode->linkCount = 0;
-    newNode->openCount = 0;
-    newNode->type = DIRECTORY;
+    i_node_t newNode;
+    newNode.linkCount = 0;
+    newNode.openCount = 0;
+    newNode.type = DIRECTORY;
     for (i = 0; i < 8; i++) {
-        newNode->blocks[i] = 0;
+        newNode.blocks[i] = 0;
     }
     // 2 entries for the nodes
-    newNode->size = 2 * sizeof(dir_entry_t);
-    newNode->blockIndex = (uint16_t) block_index();
+    newNode.size = 2 * sizeof(dir_entry_t);
+    newNode.blockIndex = (uint16_t) block_index();
     // first iNode is block 
     bcopy((unsigned char*)&newNode, (unsigned char*)&temp, sizeof(i_node_t));
     block_write(2, temp);
-    char maps[512];
+
+    // add the new dir entries
+    bzero_block(temp);
+    dir_entry_t currDirEntry;
+    dir_entry_t parDirEntry;
+    bcopy((unsigned char*)&currDirEntry.name, ".", 2);
+    bcopy((unsigned char*)&parDirEntry.name, "..", 3);
+    currDirEntry.iNode = 0;
+    parDirEntry.iNode = 0;
+    currDirEntry.type = DIRECTORY;
+    parDirEntry.type = DIRECTORY;
+    bcopy((unsigned char *)&currDirEntry, (unsigned char *)&temp, sizeof(dir_entry_t));
+    bcopy((unsigned char *)&parDirEntry, (unsigned char *)&temp[sizeof(dir_entry_t)], sizeof(dir_entry_t));
+    block_write(newNode.blockIndex, tempBlock);
+
+    // finally we allocate our bitmaps
+    bzero_block(temp);
 
     // allocate maps in the block at index 1
     // inodes and then blocks
-    bcopy((unsigned char *)&inode_allocation_map, (unsigned char *)&maps, 256);
-    bcopy((unsigned char *)&block_allocation_map, (unsigned char *)&maps[256], 256);
+    bcopy((unsigned char *)&inode_allocation_map, (unsigned char *)&temp, 256);
+    bcopy((unsigned char *)&block_allocation_map, (unsigned char *)&temp[256], 256);
     block_write(1, maps);
     // set all these fields to null for the file descriptor table
     for (i = 0; i < 256; i++) {
@@ -410,5 +434,3 @@ int block_index(void) {
     }
     return -1;
 }
-
-
