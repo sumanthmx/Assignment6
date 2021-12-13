@@ -1,0 +1,32 @@
+block.o: block.c common.h kernel.h util.h block.h usb.h thread.h
+blockFake.o: blockFake.c common.h block.h
+createimage.o: createimage.c
+fs.o: fs.c util.h common.h block.h fs.h shellutil.h
+interrupt.o: interrupt.c common.h interrupt.h kernel.h keyboard.h usb.h \
+ thread.h memory.h scheduler.h util.h
+kernel.o: kernel.c common.h usb.h kernel.h thread.h interrupt.h \
+ keyboard.h mbox.h memory.h scheduler.h th.h util.h time.h fs.h
+keyboard.o: keyboard.c kernel.h common.h scheduler.h util.h mbox.h \
+ thread.h keyboard.h interrupt.h
+mbox.o: mbox.c common.h thread.h kernel.h mbox.h util.h
+memory.o: memory.c common.h kernel.h scheduler.h memory.h thread.h util.h \
+ interrupt.h usb.h
+process1.o: process1.c common.h syslib.h util.h
+process2.o: process2.c common.h syslib.h util.h
+process3.o: process3.c common.h syslib.h util.h
+process4.o: process4.c common.h syslib.h util.h
+scheduler.o: scheduler.c interrupt.h common.h kernel.h scheduler.h usb.h \
+ thread.h util.h time.h
+shell.o: shell.c util.h common.h shellutil.h syslib.h
+shellutil.o: shellutil.c common.h syslib.h util.h shellutil.h
+shellutilFake.o: shellutilFake.c util.h common.h fs.h shellutil.h
+sleep.o: sleep.c sleep.h kernel.h common.h util.h interrupt.h scheduler.h \
+ time.h
+syslib.o: syslib.c common.h syslib.h util.h
+th1.o: th1.c kernel.h common.h scheduler.h th.h mbox.h thread.h util.h
+th2.o: th2.c common.h th.h thread.h kernel.h util.h scheduler.h
+thread.o: thread.c common.h util.h thread.h kernel.h scheduler.h
+time.o: time.c time.h common.h util.h
+usb.o: usb.c kernel.h common.h memory.h util.h usb.h thread.h scheduler.h \
+ sleep.h interrupt.h
+util.o: util.c common.h util.h

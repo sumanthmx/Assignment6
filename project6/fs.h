@@ -8,18 +8,26 @@
 
 #define FS_SIZE 2048
 #define ROOT_DIRECTORY_INDEX 0
+#define MAX_FILE_NAME 32
 
 // size is byteCount
 // each node points to 8 blocks
+// designed to TAKE 32 bytes: link Count + open Coynt + block Index + blocks + size + short = 
+// 2 + 2 + 2 + 2(8) + 4 + 2 = 32
 typedef struct i_node {
-    int linkCount;
-    int openCount;
-    int blocksUsed;
-    int blockIndex;
+    uint16_t linkCount; 
+    //a
+    uint16_t openCount;
+    // uint8_t blocksUsed;
+    uint16_t blockIndex;
+    // blockIndex is for directories mainly... indicates the box that contains the dirEntries
     // bool_t free;
-    int blocks[8];
-    int size;
-    short type;
+    uint16_t blocks[8]; 
+    //a
+    int size; 
+    // a
+    short type; 
+    // a
 
 } i_node_t;
 
@@ -35,14 +43,14 @@ typedef struct super_block {
 typedef struct file_descriptor {
     bool_t inUse;
     int iNode;
-    int seek;
+    int offset;
     int flag;
 } file_descriptor_t;
 
 typedef struct dir_entry {
     char name[MAX_FILE_NAME];
-    int nameLength;
-    int i_node;
+    // int nameLength;
+    int iNode;
     short type;
     // is directory or not?
 } dir_entry_t;
@@ -61,7 +69,10 @@ int fs_cd( char *dirName);
 int fs_link( char *old_fileName, char *new_fileName);
 int fs_unlink( char *fileName);
 int fs_stat( char *fileName, fileStat *buf);
+int fs_inodeBlock(int iNode);
+int fs_blockOffset(int iNode, int block);
+int inode_index(void);
+int block_index(void);
 
-#define MAX_FILE_NAME 32
 #define MAX_PATH_NAME 256  // This is the maximum supported "full" path len, eg: /foo/bar/test.txt, rather than the maximum individual filename len.
 #endif
