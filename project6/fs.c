@@ -242,6 +242,8 @@ fs_close( int fd) {
         block_read(2 + blockToRead, tempBlock);
         bcopy((unsigned char *)&tempBlock[fs_blockOffset(fds[fd].iNode, blockToRead)], (unsigned char *)&nodeBlock, sizeof(i_node_t));
         i_node_t *node = (i_node_t *)&nodeBlock;
+        if (node->openCount < 1) return -1;
+        node->openCount--;
         // node->
         if (node->linkCount == 0) {
 
@@ -254,17 +256,111 @@ fs_close( int fd) {
 int 
 fs_read( int fd, char *buf, int count) {
     if (count == 0) return 0;
-    else {
-        // what do i read and where???
-        // fds[fd]
+    if (!fds[fd].inUse || fds[fd].flag == FS_O_WRONLY) return -1;
+    // if unable to read anything into the buffer, do not read and return failure
+    char tempBlock[BLOCK_SIZE];
+    char nodeBlock[sizeof(i_node_t)];
+    int blockToRead = fs_inodeBlock(fds[fd].iNode);
+    block_read(2 + blockToRead, tempBlock);
+    bcopy((unsigned char *)&tempBlock[fs_blockOffset(fds[fd].iNode, blockToRead)], (unsigned char *)&nodeBlock, sizeof(i_node_t));
+    i_node_t *node = (i_node_t *)&nodeBlock;
+    if (count > node->size - fds[fd].offset) return -1;
+    int index = fds[fd].offset / BLOCK_SIZE;
+    int offsetIntoBlock = fds[fd].offset % BLOCK_SIZE;
+    int amountToRead = count;
+    int amountReading = BLOCK_SIZE - offsetIntoBlock;
+    int amountRead = 0;
+    while (amountToRead > 0) {
+        if (amountToRead < amountReading) {
+            amountReading = amountToRead;
+        }
+        block_read(node->blocks[index], tempBlock);
+        bcopy((unsigned char *)&tempBlock[offsetIntoBlock], (unsigned char *)&buf[amountRead], amountReading);
+        amountToRead -= amountReading;
+        amountRead += amountReading;
+        offsetIntoBlock = 0;
+        index += 1;
+        amountReading = BLOCK_SIZE;
     }
-    return -1;
+    // read bytes here
+    fds[fd].offset += count;
+    // what do i read and where???
+    // fds[fd]
+    return 0;
 }
     
-int 
+int // edit
 fs_write( int fd, char *buf, int count) {
     if (count == 0) return 0;
-    return -1;
+    if (!fds[fd].inUse || fds[fd].flag == FS_O_RDONLY) return -1;
+    // if unable to continue writing due to space issues, do not write and return failure
+    if (count > 8*BLOCK_SIZE - fds[fd].offset) return -1;
+    else {
+        int i;
+        int index;
+        int offsetIntoBlock;
+        int amountToWrite;
+        int amountWriting;
+        int amountWritten;
+        char tempBlock[BLOCK_SIZE];
+        char nodeBlock[sizeof(i_node_t)];
+        int blockToRead = fs_inodeBlock(fds[fd].iNode);
+        block_read(2 + blockToRead, tempBlock);
+        bcopy((unsigned char *)&tempBlock[fs_blockOffset(fds[fd].iNode, blockToRead)], (unsigned char *)&nodeBlock, sizeof(i_node_t));
+        i_node_t *node = (i_node_t *)&nodeBlock;
+        // update size if necessary
+        if (node->size < fds[fd].offset + count) {
+            node->size = fds[fd].offset + count;
+            bcopy((unsigned char *)&nodeBlock, (unsigned char *)&tempBlock[fs_blockOffset(fds[fd].iNode, blockToRead)], sizeof(i_node_t));
+            block_write(2 + blockToRead, tempBlock);
+        }
+        // pad with null chars until the offset is reached
+        if (node->size < fds[fd].offset) {
+            index = node->size / BLOCK_SIZE;
+            offsetIntoBlock = node->size % BLOCK_SIZE;
+            amountToWrite = fds[fd].offset - node->size;
+            amountWriting = BLOCK_SIZE - offsetIntoBlock;
+            amountWritten = 0;
+            while (amountToWrite > 0) {
+                if (amountToWrite < amountWriting) {
+                    amountWriting = amountToWrite;
+                } 
+                // maintain what comes before node->size in the block by reading first
+                block_read(node->blocks[index], tempBlock);
+                int i = offsetIntoBlock;
+                for (i = 0; i < BLOCK_SIZE; i++) {
+                    tempBlock[i] = '\0';
+                }
+                block_write(node->blocks[index], (unsigned char *)&tempBlock[offsetIntoBlock]);
+                amountToWrite -= amountWriting;
+                amountWritten += amountWriting;
+                offsetIntoBlock = 0;
+                index += 1;
+                amountWriting = BLOCK_SIZE;
+            }
+        }
+        // write bytes from buf into the blocks
+        index = fds[fd].offset / BLOCK_SIZE;
+        offsetIntoBlock = fds[fd].offset % BLOCK_SIZE;
+        amountToWrite = count;
+        amountWriting = BLOCK_SIZE - offsetIntoBlock;
+        amountWritten = 0;
+        while (amountToWrite > 0) {
+            if (amountToWrite < amountWriting) {
+                amountWriting = amountToWrite;
+            }
+            block_read(node->blocks[index], tempBlock);
+            bcopy((unsigned char *)&buf[amountWritten], (unsigned char *)&tempBlock[offsetIntoBlock], amountWriting);
+            block_write(node->blocks[index], (unsigned char *)&tempBlock[offsetIntoBlock]);
+            amountToWrite -= amountWriting;
+            amountWritten += amountWriting;
+            offsetIntoBlock = 0;
+            index += 1;
+        }
+        // update offset
+        fds[fd].offset += count;
+    }
+    return 0;
 }
 
 int 
@@ -456,4 +552,12 @@ void free_block(int block) {
     block_write(1, tempBlock);
     bzero_block(tempBlock);
     block_write(block, tempBlock);
+}
+
+// nulls out a block
+void bzero_block( char *block) {
+    int i;
+
+    for ( i = 0; i < BLOCK_SIZE; i++)
+	block[i] = '\0';
 }
