@@ -12,22 +12,18 @@
 
 // size is byteCount
 // each node points to 8 blocks
-// designed to TAKE 32 bytes: link Count + open Coynt + block Index + blocks + size + short = 
-// 2 + 2 + 2 + 2(8) + 4 + 2 = 32
+// designed to TAKE 32 bytes: 
 typedef struct i_node {
     uint16_t linkCount; 
-    //a
     uint16_t openCount;
     // uint8_t blocksUsed;
-    uint16_t blockIndex;
-    // blockIndex is for directories mainly... indicates the box that contains the dirEntries
-    // bool_t free;
+
+    // blocks have file names for directories and file contents for files
     uint16_t blocks[8]; 
-    //a
     int size; 
-    // a
     short type; 
-    // a
+    uint16_t paddingField;
+   // paddingField is trash, but exists so sizeof(i_node_t) = 32
 
 } i_node_t;
 
@@ -54,6 +50,15 @@ typedef struct dir_entry {
     short type;
     // is directory or not?
 } dir_entry_t;
+
+// iNode of current_directory
+int current_directory_node;
+// there are 256 file_descriptors. these are not persisted though, so no need to store them in disk.
+file_descriptor_t fds[256];
+// use bits: allocated for = 1, not yet allocated = 0
+
+uint8_t block_allocation_map[256];
+uint8_t inode_allocation_map[256];
 
 
 void fs_init( void);

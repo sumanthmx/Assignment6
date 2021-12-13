@@ -6,6 +6,7 @@
 #include "util.h"
 #include "common.h"
 #include "shellutil.h"
+#include "block.h"
 
 #ifdef FAKE
 #define START main
@@ -260,6 +261,38 @@ static void shell_cd( void) {
 
 static void shell_ls( void) {
     //should a system call print to the screen?
+    char tempBlock[BLOCK_SIZE];
+    char nodeBlock[sizeof(i_node_t)];
+    int blockToRead = fs_inodeBlock(current_directory_node);
+    block_read(2 + blockToRead, tempBlock);
+    bcopy((unsigned char *)&tempBlock[fs_blockOffset(current_directory_node, blockToRead)], (unsigned char *)&nodeBlock, sizeof(i_node_t));
+    i_node_t *directoryNode = (i_node_t *)&nodeBlock;
+
+    // find the block containing the directory [FIXED]
+    // assumes these blocks ONLY contain entries and that sizeof(dir_entry_t) evenly divides BLOCK_SIZE
+    int size = directoryNode->size;
+    int length = size / sizeof(dir_entry_t);
+    int entriesPerFullBlock = BLOCK_SIZE / sizeof(dir_entry_t);
+    int entriesInBlock = entriesPerFullBlock;
+    int sum = 0;
+    int a = 0;
+    int b;
+    // find all directory entries and print em!
+    while (sum < size) {
+        if (size - sum < sizeof(dir_entry_t) * entriesPerFullBlock) {
+            entriesInBlock = (size - sum) / sizeof(dir_entry_t);
+        }
+        blockToRead = directoryNode->blocks[a];
+        block_read(blockToRead, tempBlock);
+        for (b = 0; b < entriesInBlock; b++) {
+            sum += sizeof(dir_entry_t);
+            dir_entry_t *dirEntry = (dir_entry_t *)(&tempBlock + b * sizeof(dir_entry_t));
+            writeStr(dirEntry->name);
+        }
+        a++;
+        entriesInBlock = entriesPerFullBlock;
+    }
+    
   writeStr("Problem with ls\n");
 
 //Code/pseudocode you can use somewhere to get the same ls output as the tests
