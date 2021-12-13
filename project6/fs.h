@@ -22,8 +22,8 @@ typedef struct i_node {
     uint16_t blocks[8]; 
     int size; 
     short type; 
-    uint16_t paddingField;
-   // paddingField is trash, but exists so sizeof(i_node_t) = 32
+    uint16_t lastBlockIndex;
+   // from 0 to 7
 
 } i_node_t;
 
@@ -49,7 +49,8 @@ typedef struct dir_entry {
     int iNode;
     short type;
     // is directory or not?
-    char extra[24];
+    uint8_t extra[12];
+    // extra padding
 } dir_entry_t;
 
 // iNode of current_directory
