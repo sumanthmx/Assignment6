@@ -17,7 +17,7 @@ process3.o: process3.c common.h syslib.h util.h
 process4.o: process4.c common.h syslib.h util.h
 scheduler.o: scheduler.c interrupt.h common.h kernel.h scheduler.h usb.h \
  thread.h util.h time.h
-shell.o: shell.c util.h common.h shellutil.h syslib.h
+shell.o: shell.c util.h common.h shellutil.h block.h syslib.h
 shellutil.o: shellutil.c common.h syslib.h util.h shellutil.h
 shellutilFake.o: shellutilFake.c util.h common.h fs.h shellutil.h
 sleep.o: sleep.c sleep.h kernel.h common.h util.h interrupt.h scheduler.h \
