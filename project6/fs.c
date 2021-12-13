@@ -111,15 +111,15 @@ fs_mkfs( void) {
     bzero_block(temp);
     dir_entry_t currDirEntry;
     dir_entry_t parDirEntry;
-    bcopy((unsigned char*)&currDirEntry.name, ".", 2);
-    bcopy((unsigned char*)&parDirEntry.name, "..", 3);
+    bcopy(".", (unsigned char*)&currDirEntry.name, 2);
+    bcopy("..", (unsigned char*)&parDirEntry.name, 3);
     currDirEntry.iNode = 0;
     parDirEntry.iNode = 0;
     currDirEntry.type = DIRECTORY;
     parDirEntry.type = DIRECTORY;
     bcopy((unsigned char *)&currDirEntry, (unsigned char *)&temp, sizeof(dir_entry_t));
     bcopy((unsigned char *)&parDirEntry, (unsigned char *)&temp[sizeof(dir_entry_t)], sizeof(dir_entry_t));
-    block_write(newNode.blockIndex, tempBlock);
+    block_write(newNode.blockIndex, temp);
 
     // finally we allocate our bitmaps
     bzero_block(temp);
@@ -128,7 +128,7 @@ fs_mkfs( void) {
     // inodes and then blocks
     bcopy((unsigned char *)&inode_allocation_map, (unsigned char *)&temp, 256);
     bcopy((unsigned char *)&block_allocation_map, (unsigned char *)&temp[256], 256);
-    block_write(1, maps);
+    block_write(1, temp);
     // set all these fields to null for the file descriptor table
     for (i = 0; i < 256; i++) {
         fds[i].offset = 0;
@@ -302,7 +302,6 @@ fs_cd( char *dirName) {
     int size = directoryNode->size;
     block_read(blockToRead, tempBlock);
     int length = size / sizeof(dir_entry_t);
-    // FIX THIS (ask)
     
     int i;
     for (i = 0; i < length; i++) {
@@ -413,6 +412,17 @@ int inode_index(void) {
     return -1;
 }
 
+// unallocate an iNode
+void free_inode(int iNode) {
+    char tempBlock[BLOCK_SIZE];
+    int j = iNode % 8;
+    int i = iNode - j / 8;
+    inode_allocation_map[i] = inode_allocation_map[i] ^ (1 << j);
+    block_read(1, tempBlock);
+    bcopy((unsigned char *)&inode_allocation_map, (unsigned char *)&tempBlock, 256);
+    block_write(1, tempBlock);
+}
+
 // returns -1 if no free blocks available. otherwise returns index of free blocks
 // also claims the index and updates the maps (in disk as well) :)
 int block_index(void) {
@@ -433,4 +443,17 @@ int block_index(void) {
         }
     }
     return -1;
+}
+
+// unallocate a block and zero out its contents
+void free_block(int block) {
+    char tempBlock[BLOCK_SIZE];
+    int j = block % 8;
+    int i = block - j / 8;
+    block_allocation_map[i] = block_allocation_map[i] ^ (1 << j);
+    block_read(1, tempBlock);
+    bcopy((unsigned char *)&block_allocation_map, (unsigned char *)&tempBlock, 256);
+    block_write(1, tempBlock);
+    bzero_block(tempBlock);
+    block_write(block, tempBlock);
 }
