@@ -88,6 +88,8 @@ int findDirectoryEntry(int iNode, char *filename);
 int makeNode(char *nodeBlock, short type, int iNode);
 int findDirectoryEntryBlock(int iNode, char *fileName);
 int findDirectoryEntryOffset(int iNode, char *fileName);
+void removeDirectoryEntry(int iNode, char *fileName);
+void addDirectoryEntry(int directory_node, int entry_node, short type, char *fileName);
 
 #define MAX_PATH_NAME 256  // This is the maximum supported "full" path len, eg: /foo/bar/test.txt, rather than the maximum individual filename len.
 #endif

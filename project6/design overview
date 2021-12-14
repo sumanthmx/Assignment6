@@ -26,6 +26,11 @@ Whenever files or directories are created, blocks for these processes are alloca
 Whenever changes are made to iNodes, we immediately write these changes to disk using helperFunctions, so that in the event the system crashes, 
 the information is still stored in the disk. 
 
-I did not complete the link and unlink functions, so I do not have a portion of that assignment to discuss in this document. 
+The link function is roughly implemented as follows. First, we check if the a file / dir with name newFile exists or if there is no file / dir with name oldFile, as
+these are errors. In addition, we have to check if there is sufficient space in the blocks of the iNode associated to the current_directory to add a new entry.
+If so, we increment the link count of the iNode and store a new directory entry with name newFile. We then copy this entry into the disk, and then update the inode in disk.
+
+
+I did not complete the close and unlink functions, so I do not have a portion of that assignment to discuss in this document. 
 I apologize for my minimal completion of this assignment. I tried my level best and spent 50-57 hours working on this, but
 it ultimately was not enough.
