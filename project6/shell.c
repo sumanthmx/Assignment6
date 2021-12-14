@@ -263,15 +263,13 @@ static void shell_ls( void) {
     //should a system call print to the screen?
     char tempBlock[BLOCK_SIZE];
     char nodeBlock[sizeof(i_node_t)];
-    int blockToRead = fs_inodeBlock(current_directory_node);
-    block_read(2 + blockToRead, tempBlock);
-    bcopy((unsigned char *)&tempBlock[fs_blockOffset(current_directory_node, blockToRead)], (unsigned char *)&nodeBlock, sizeof(i_node_t));
+    read_inode(current_directory_node, nodeBlock);
     i_node_t *directoryNode = (i_node_t *)&nodeBlock;
+    int blockToRead;
 
     // find the block containing the directory [FIXED]
     // assumes these blocks ONLY contain entries and that sizeof(dir_entry_t) evenly divides BLOCK_SIZE
     int size = directoryNode->size;
-    int length = size / sizeof(dir_entry_t);
     int entriesPerFullBlock = BLOCK_SIZE / sizeof(dir_entry_t);
     int entriesInBlock = entriesPerFullBlock;
     int sum = 0;

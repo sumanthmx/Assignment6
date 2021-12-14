@@ -49,7 +49,7 @@ typedef struct dir_entry {
     int iNode;
     short type;
     // is directory or not?
-    uint8_t extra[12];
+    uint8_t extra[24];
     // extra padding
 } dir_entry_t;
 
@@ -82,6 +82,9 @@ int inode_index(void);
 int block_index(void);
 void free_inode(int iNode);
 void free_block(int block);
+void read_inode(int iNode, char *nodeBlock);
+void write_inode(int iNode, char *nodeBlock);
+int findDirectoryEntry(int iNode, char *filename);
 
 #define MAX_PATH_NAME 256  // This is the maximum supported "full" path len, eg: /foo/bar/test.txt, rather than the maximum individual filename len.
 #endif
