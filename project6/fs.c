@@ -33,7 +33,7 @@
 // first block is closed cause the super block is allocated for it
 // first block is the super block
 void fs_init( void) {
-    writeInt(sizeof(dir_entry_t));
+    // writeInt(sizeof(dir_entry_t));
     block_init();
     char readTemp[BLOCK_SIZE];
     block_read(0, readTemp);
@@ -343,7 +343,7 @@ int
 fs_mkdir( char *fileName) {
     char tempBlock[BLOCK_SIZE];
     char nodeBlock[sizeof(i_node_t)];
-    if (findDirectoryEntry(current_directory_node, fileName) == -1) return -1;
+    if (findDirectoryEntry(current_directory_node, fileName) != -1) return -1;
     read_inode(current_directory_node, nodeBlock);
     i_node_t *directoryNode = (i_node_t *)&nodeBlock;
     // child not found in curr directory, so we can continue and create a new directory
@@ -640,7 +640,6 @@ int findDirectoryEntry(int iNode, char *fileName) {
     int b;
     // find all directory entries 
     while (sum < size) {
-        assert(a < 8);
         if (size - sum < sizeof(dir_entry_t) * entriesPerFullBlock) {
             entriesInBlock = (size - sum) / sizeof(dir_entry_t);
         }
