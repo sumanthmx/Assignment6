@@ -13,17 +13,23 @@
 // size is byteCount
 // each node points to 8 blocks
 // designed to TAKE 32 bytes: 
+
+// 2 + 2 + 2(8) + 4 + 2 + 2 + 4 (padding)
 typedef struct i_node {
     uint16_t linkCount; 
     uint16_t openCount;
     // uint8_t blocksUsed;
 
-    // blocks have file names for directories and file contents for files
-    uint16_t blocks[8]; 
-    int size; 
-    short type; 
+    uint16_t type; 
     uint16_t lastBlockIndex;
+
+    uint32_t size; 
    // from 0 to 7
+   // blocks have file names for directories and file contents for files
+    uint16_t blocks[8]; 
+
+    // 4 additional bytes to make a total of 32
+    uint32_t padding;
 
 } i_node_t;
 

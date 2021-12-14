@@ -54,6 +54,8 @@ fs_mkfs( void) {
     char nodeBlock[sizeof(i_node_t)];
     super_block_t superblock;
     superblock.magicNumber = 72;
+    // first i node is for the root directory
+    superblock.root_node_index = 0;
     int i;
 
     // set the superblock
@@ -68,7 +70,7 @@ fs_mkfs( void) {
         inode_allocation_map[i] = 0;
         block_allocation_map[i] = 0;
     }
-    bcopy((unsigned char*)&superblock, (unsigned char *)&temp, sizeof(super_block_t));
+    bcopy((unsigned char*)&superblock, (unsigned char *)temp, sizeof(super_block_t));
     block_write(0, temp);
     bzero_block(temp);
     // block_allocation_map[0] = 3;
@@ -84,8 +86,7 @@ fs_mkfs( void) {
     block_allocation_map[16] = 3;
 
     // let the index of the root dir's iNode = 0
-    // first i node is for the root directory
-    superblock.root_node_index = 0;
+    
     inode_allocation_map[0] = 1;
     
     // finally we allocate our bitmaps
@@ -96,7 +97,7 @@ fs_mkfs( void) {
     bcopy((unsigned char *)block_allocation_map, (unsigned char *)&temp[256], 256);
     block_write(1, temp);
     makeNode(nodeBlock, DIRECTORY, 0);
-    i_node_t *newNode = (i_node_t *)&nodeBlock[0];
+    i_node_t *newNode = (i_node_t *)nodeBlock;
     write_inode(0, nodeBlock);
 
     // add the new dir entries
@@ -123,6 +124,8 @@ fs_mkfs( void) {
         fds[i].inUse = FALSE;
         bzero(fds[i].name, MAX_FILE_NAME);
     }
+    // debug line
+    // printf("%d\n", sizeof(super_block_t));
     return 0;
     // cases of return -1 come from other failures
 }
@@ -444,10 +447,10 @@ fs_unlink( char *fileName) {
     if (node->linkCount == 1) {
         if (node->openCount == 0) {
             free_inode(iNode);
-        }
-        int i;
-        for (i = 0; i < 8; i++) {
-            free_block(node->blocks[i]);
+            int i;
+            for (i = 0; i < 8; i++) {
+                free_block(node->blocks[i]);
+            }
         }
         // other things to do in removal???
         // remove directory entry
@@ -521,7 +524,7 @@ int inode_index(void) {
 void free_inode(int iNode) {
     char tempBlock[BLOCK_SIZE];
     int j = iNode % 8;
-    int i = iNode - j / 8;
+    int i = (iNode - j) / 8;
     inode_allocation_map[i] = inode_allocation_map[i] ^ (1 << j);
     block_read(1, tempBlock);
     bcopy((unsigned char *)inode_allocation_map, (unsigned char *)tempBlock, 256);
@@ -533,14 +536,14 @@ void read_inode(int iNode, char *nodeBlock) {
     char tempBlock[BLOCK_SIZE];
     int blockToRead = 2 + fs_inodeBlock(iNode);
     block_read(blockToRead, tempBlock);
-    bcopy((unsigned char *)&tempBlock[fs_blockOffset(iNode, blockToRead)], (unsigned char *)nodeBlock, sizeof(i_node_t));
+    bcopy((unsigned char *)&tempBlock[fs_blockOffset(iNode, blockToRead - 2)], (unsigned char *)nodeBlock, sizeof(i_node_t));
 }
 // writes an iNode's information to the disk
 void write_inode(int iNode, char *nodeBlock) {
     char tempBlock[BLOCK_SIZE];
     int blockToWrite = 2 + fs_inodeBlock(iNode);
     block_read(blockToWrite, tempBlock);
-    bcopy((unsigned char *)nodeBlock, (unsigned char *)&tempBlock[fs_blockOffset(iNode, blockToWrite)], sizeof(i_node_t));
+    bcopy((unsigned char *)nodeBlock, (unsigned char *)&tempBlock[fs_blockOffset(iNode, blockToWrite - 2)], sizeof(i_node_t));
     block_write(blockToWrite, tempBlock);
 }
 
@@ -570,7 +573,7 @@ int block_index(void) {
 void free_block(int block) {
     char tempBlock[BLOCK_SIZE];
     int j = block % 8;
-    int i = block - j / 8;
+    int i = (block - j) / 8;
     block_allocation_map[i] = block_allocation_map[i] ^ (1 << j);
     block_read(1, tempBlock);
     bcopy((unsigned char *)block_allocation_map, (unsigned char *)&tempBlock[256], 256);
@@ -781,6 +784,8 @@ void addDirectoryEntry(int directory_node, int entry_node, short type, char *fil
     // insert entry (size was defined earlier)
     read_inode(directory_node, nodeBlock);
     i_node_t *directoryNode = (i_node_t *)nodeBlock;
+    // debug line
+    // printf("%d\n", directoryNode->type);
     block_read(directoryNode->blocks[directoryNode->lastBlockIndex], tempBlock);
     bcopy((unsigned char *)&nextEntry, (unsigned char *)&tempBlock[directoryNode->size % BLOCK_SIZE], sizeof(dir_entry_t));
     block_write(directoryNode->blocks[directoryNode->lastBlockIndex], tempBlock);

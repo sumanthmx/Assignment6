@@ -3,7 +3,7 @@ For this assignment, I utilized four different data structures.
 I used a directory entry, which contained a file name, a file type (directory / file), and an extra array field (to pad for memory to make this a multiple of 32). 
 
 I used a file descriptor, which contained a bool_t (for whether or not the descriptor is occupied), an int for offset (into a file), an int for iNode 
-(the iNode which corresponds to the file), and the flag (which represents the read / write privileges). 
+(the iNode which corresponds to the file), and the flag (which represents the read / write privileges), as well as the fileName. 
 
 I used an i node struct, which has a uint16 link count (for number of files linked to it), a uint16 open count (number of processes which have a file open), 
 an array of uint16s (which correspond to block indices), an int for size (which contains the number of bytes the file occupies), and a short for 
@@ -13,7 +13,8 @@ And I also used a super block struct, which has a magic number (used to check wh
 (which contains the root_node for the directory).
 
 I deliberately ensured that the i node and the directory entry structs were multiples of 32 (32 and 64 respectively), 
-such that they evenly divided the sizes of the blocks, which was 512. In the file system, there were a total of 2048 blocks. 
+such that they evenly divided the sizes of the blocks, which was 512. This removes the need to pad inside the blocks themselves.
+In the file system, there were a total of 2048 blocks. 
 We had allocated the first block for the supernode, which enables us to check whether or not the file system has been. 
 The second block is allocated for the blockAllocationMap and the iNodeAllocationMap, which are uint8 arrays of length 256. 
 In these maps, each bit corresponds to a single block (or iNode), and we iterate through them bitwise. We also call helper 
@@ -30,7 +31,9 @@ The link function is roughly implemented as follows. First, we check if the a fi
 these are errors. In addition, we have to check if there is sufficient space in the blocks of the iNode associated to the current_directory to add a new entry.
 If so, we increment the link count of the iNode and store a new directory entry with name newFile. We then copy this entry into the disk, and then update the inode in disk.
 
+The unlink function is implemented similarly. First we check if there even exists an entry with fileName for the current_directory. Then we check if this entry 
+corresponds to a FILE (if it is a directory return -1). If the linkCount is 1, check to see if the openCount is zero and then remove the file entirely by freeing its
+iNode id and blocks and removing its directory entry. Otherwise, we decrement linkCount and update the linkCount to the disk.
 
-I did not complete the close and unlink functions, so I do not have a portion of that assignment to discuss in this document. 
-I apologize for my minimal completion of this assignment. I tried my level best and spent 50-57 hours working on this, but
+I apologize for my minimal completion of this assignment. I tried my level best and spent 55-63 hours working on this, but
 it ultimately was not enough.

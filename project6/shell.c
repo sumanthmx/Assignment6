@@ -270,6 +270,8 @@ static void shell_ls( void) {
     // find the block containing the directory [FIXED]
     // assumes these blocks ONLY contain entries and that sizeof(dir_entry_t) evenly divides BLOCK_SIZE
     int size = directoryNode->size;
+    // debug line
+    // printf("%d\n", size);
     int entriesPerFullBlock = BLOCK_SIZE / sizeof(dir_entry_t);
     int entriesInBlock = entriesPerFullBlock;
     int sum = 0;
@@ -277,21 +279,23 @@ static void shell_ls( void) {
     int b;
     // find all directory entries and print em!
     while (sum < size) {
-        if (size - sum < sizeof(dir_entry_t) * entriesPerFullBlock) {
+        if (size - sum < BLOCK_SIZE) {
             entriesInBlock = (size - sum) / sizeof(dir_entry_t);
         }
         blockToRead = directoryNode->blocks[a];
+        // debug line
+        printf("%d\n", blockToRead);
         block_read(blockToRead, tempBlock);
         for (b = 0; b < entriesInBlock; b++) {
             sum += sizeof(dir_entry_t);
-            dir_entry_t *dirEntry = (dir_entry_t *)(&tempBlock + b * sizeof(dir_entry_t));
+            dir_entry_t *dirEntry = (dir_entry_t *)(&tempBlock[b * sizeof(dir_entry_t)]);
             writeStr(dirEntry->name);
         }
         a++;
         entriesInBlock = entriesPerFullBlock;
     }
     
-  writeStr("Problem with ls\n");
+  // writeStr("Problem with ls\n");
 
 //Code/pseudocode you can use somewhere to get the same ls output as the tests
 //  writeStr("Name");
