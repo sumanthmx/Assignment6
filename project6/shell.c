@@ -264,7 +264,7 @@ static void shell_ls( void) {
     char tempBlock[BLOCK_SIZE];
     char nodeBlock[sizeof(i_node_t)];
     read_inode(current_directory_node, nodeBlock);
-    i_node_t *directoryNode = (i_node_t *)&nodeBlock;
+    i_node_t *directoryNode = (i_node_t *)&nodeBlock[0];
     int blockToRead;
 
     // find the block containing the directory [FIXED]
