@@ -37,6 +37,7 @@ typedef struct super_block {
 } super_block_t;
 
 typedef struct file_descriptor {
+    char name[MAX_FILE_NAME];
     bool_t inUse;
     int iNode;
     int offset;
@@ -57,7 +58,7 @@ typedef struct dir_entry {
 int current_directory_node;
 // there are 256 file_descriptors. these are not persisted though, so no need to store them in disk.
 file_descriptor_t fds[256];
-// use bits: allocated for = 1, not yet allocated = 0
+// allocated for = 1, not yet allocated = 0
 
 uint8_t block_allocation_map[256];
 uint8_t inode_allocation_map[256];

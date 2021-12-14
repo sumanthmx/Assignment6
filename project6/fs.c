@@ -121,6 +121,7 @@ fs_mkfs( void) {
         fds[i].offset = 0;
         fds[i].flag = 0;
         fds[i].inUse = FALSE;
+        bzero(fds[i].name, MAX_FILE_NAME);
     }
     return 0;
     // cases of return -1 come from other failures
@@ -177,27 +178,35 @@ fs_open( char *fileName, int flags) {
     fds[index].offset = 0;
     fds[index].iNode = iNode;
     fds[index].flag = flags;
-    
+    bcopy((unsigned char*)fileName, (unsigned char*)fds[index].name, strlen(fileName));
     return 0;
     
 }
 
 int 
 fs_close( int fd) {
+    // if descriptor is not in use, you should NOT close
     if (!fds[fd].inUse) return -1;
     else {
-        char tempBlock[BLOCK_SIZE];
+        // char tempBlock[BLOCK_SIZE];
         char nodeBlock[sizeof(i_node_t)];
         read_inode(fds[fd].iNode, nodeBlock);
         i_node_t *node = (i_node_t *)nodeBlock;
+        // do not open a file which has not been opened
         if (node->openCount < 1) return -1;
         node->openCount--;
+        write_inode(fds[fd].iNode, nodeBlock);
         // if linkCount is zero, remove file
         if (node->linkCount == 0) {
+            int c;
+            for (c = 0; c < 8; c++) {
+                free_block(node->blocks[c]);
+            }
             free_inode(fds[fd].iNode);
+            removeDirectoryEntry(current_directory_node, fds[fd].name);
         }
+        // make descriptor inactive
         fds[fd].inUse = FALSE;
-        // bzero(fds[fd], )
     }
     return 0;
 }
