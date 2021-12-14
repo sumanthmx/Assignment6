@@ -1,0 +1,31 @@
+For this assignment, I utilized four different data structures. 
+
+I used a directory entry, which contained a file name, a file type (directory / file), and an extra array field (to pad for memory to make this a multiple of 32). 
+
+I used a file descriptor, which contained a bool_t (for whether or not the descriptor is occupied), an int for offset (into a file), an int for iNode 
+(the iNode which corresponds to the file), and the flag (which represents the read / write privileges). 
+
+I used an i node struct, which has a uint16 link count (for number of files linked to it), a uint16 open count (number of processes which have a file open), 
+an array of uint16s (which correspond to block indices), an int for size (which contains the number of bytes the file occupies), and a short for 
+type (file / directory), and a uint16 for the lastBlockIndex (highest indexed block associated with an iNode which contains bytes).
+
+And I also used a super block struct, which has a magic number (used to check whether or not a file system has been made), and a root_node_index 
+(which contains the root_node for the directory).
+
+I deliberately ensured that the i node and the directory entry structs were multiples of 32 (32 and 64 respectively), 
+such that they evenly divided the sizes of the blocks, which was 512. In the file system, there were a total of 2048 blocks. 
+We had allocated the first block for the supernode, which enables us to check whether or not the file system has been. 
+The second block is allocated for the blockAllocationMap and the iNodeAllocationMap, which are uint8 arrays of length 256. 
+In these maps, each bit corresponds to a single block (or iNode), and we iterate through them bitwise. We also call helper 
+functions to mark these bits as iNodes and blocks are freed and occupied. These two maps take a total of 512 bytes, and are 
+perfectly stored in the second block.
+
+The next 128 blocks contain the 2048 iNodes. We made these iNodes 32 bytes each, so they fit perfectly into the blocks. 
+Whenever files or directories are created, blocks for these processes are allocated for afterwards using the remaining blocks. 
+
+Whenever changes are made to iNodes, we immediately write these changes to disk using helperFunctions, so that in the event the system crashes, 
+the information is still stored in the disk. 
+
+I did not complete the link and unlink functions, so I do not have a portion of that assignment to discuss in this document. 
+I apologize for my minimal completion of this assignment. I tried my level best and spent 50-57 hours working on this, but
+it ultimately was not enough.
