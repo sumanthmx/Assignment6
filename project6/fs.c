@@ -176,13 +176,14 @@ fs_read( int fd, char *buf, int count) {
     file_descriptor_t descriptor = fds[fd];
     read_inode(descriptor.iNode, (char *)&node);
 
-
+    // read files only
     if (node.type != FILE_TYPE) return -1;
 
     int bytesRead = 0;
    
 
     while (bytesRead < count && descriptor.offset + bytesRead < node.size) {
+        // keep reading bytes through the blocks
         int currentBlock = (descriptor.offset + bytesRead)/BLOCK_SIZE;
         int currentBlockOffset = (descriptor.offset + bytesRead) % BLOCK_SIZE;
         int bytesToRead = count;
@@ -192,7 +193,6 @@ fs_read( int fd, char *buf, int count) {
         }
 
         char tempBlock[BLOCK_SIZE];
-
         block_read(fs_dataBlock(node.blocks[currentBlock]), tempBlock);
         bcopy((unsigned char *)&tempBlock[currentBlockOffset], (unsigned char*)buf, bytesToRead);
        
@@ -249,7 +249,7 @@ fs_write( int fd, char *buf, int count) {
     }
    
     node.size = descriptor.offset + bytesWritten;
-    write_inode(descriptor.iNode, &node);
+    write_inode(descriptor.iNode, (char *)&node);
 
     return bytesWritten + bytesPadded;
 }
@@ -304,7 +304,8 @@ fs_rmdir( char *fileName) {
     // needs to be an empty directory (only . and ..) to be removed
     if (node.type != DIRECTORY || node.size > 2 * sizeof(dir_entry_t)) return -1;
     removeDirectoryEntry(current_directory_node, fileName);
-    allocmap_setstatus(INODE_MAP, iNode, NOT_IN_USE);
+    // remove the node corresponding to this entry
+    free_inode(iNode);
     return 0;
     /*
     dir_entry_t last_entry;
@@ -664,6 +665,7 @@ void removeDirectoryEntry(int parentiNode, char *fileName) {
     int lastBlock = parentNode.size / BLOCK_SIZE;
     int lastOffset = parentNode.size % BLOCK_SIZE;
 
+    // if at start of a block, offset becomes the final entry in the previous block when removing one
     if(lastOffset == 0) {
         lastBlock -= 1;
         lastOffset = 7 * sizeof(dir_entry_t);
@@ -679,14 +681,18 @@ void removeDirectoryEntry(int parentiNode, char *fileName) {
     int entries = parentNode.size / sizeof(dir_entry_t);
     int nodeFound = 0;
     int currentInode = 0;
+
+    // loop through all the blocks corresponding to the iNode
     for (block = 0; block < BLOCKS_PER_INODE && entries > 0; block++) {
         char currentBlock[BLOCK_SIZE];
         block_read(fs_dataBlock(parentNode.blocks[block]), currentBlock);
 
+        // iterate through all the entries in the block
         int entries_in_block = entries;
         if (entries_in_block > DIRECTORY_ENTRIES_PER_BLOCK) entries_in_block = DIRECTORY_ENTRIES_PER_BLOCK;
         int entry_index;
 
+        // find the directory entry corresponding to the string
         for (entry_index = 0; entry_index < entries_in_block; entry_index++) {
             dir_entry_t *current_entry = (dir_entry_t*)currentBlock + entry_index;
             if (same_string(current_entry->name, fileName)) {
@@ -698,13 +704,16 @@ void removeDirectoryEntry(int parentiNode, char *fileName) {
                 i_node_t currentNode;
                 read_inode(currentInode, (char *)&currentNode);
 
+                /*
                 int i;
                 for (i = 0; i < 8; i++) {
                     allocmap_setstatus(BLOCK_MAP, currentNode.blocks[i], NOT_IN_USE);
                 }
-
+                */
+                // copy in the last dir entry where the one to be removed was at
                 bcopy((unsigned char *)&last_entry, (unsigned char *)current_entry, sizeof(dir_entry_t));
-
+                // update in the data block the removed entry
+                block_write(fs_dataBlock(parentNode.blocks[block]), currentBlock);
                 nodeFound = 1;
                 break;
             }
