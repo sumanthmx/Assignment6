@@ -10,9 +10,34 @@
 #define ROOT_DIRECTORY_INDEX 0
 #define MAX_FILE_NAME 32
 
+#define INODE_MAP 0
+#define BLOCK_MAP 1
+#define MAP_SIZE 256
+
+#define IN_USE 1
+#define NOT_IN_USE 0
 // size is byteCount
 // each node points to 8 blocks
 // designed to TAKE 32 bytes: 
+
+// BLOCK [0] : superblock, current_directory_node = root_directory
+// BLOCK [1] : if inode indexes are available
+//             if block indexes are available
+
+// next blocks (starting at 2) are reserved for the iNodes
+// we have FS_SIZE number of iNodes... each i node takes sizeof(i_node_t) = 32
+// we have num of blocks containing iNodes * BLOCK_SIZE = FS_SIZE * sizeof(i_node_t) 
+// num Blocks containing iNodes = FS_SIZE * sizeof(i_node_t) / BLOCK_SIZE = 2048 * 32 / 512 = 128
+// set BLOCKS[2 - 129] for i_nodes
+// BLOCK[130] onwards is real data blocks
+
+// each file or directory has 8 data blocks allocated to it...
+
+// each file or directory has an iNode
+// each directory can contain BLOCK_SIZE * 8 / sizeof(dirEntry) entries
+
+// iNode of current_directory
+extern int current_directory_node;
 
 // 2 + 2 + 2(8) + 4 + 2 + 2 + 4 (padding)
 typedef struct i_node {
@@ -21,24 +46,26 @@ typedef struct i_node {
     // uint8_t blocksUsed;
 
     uint16_t type; 
-    uint16_t lastBlockIndex;
+    
 
     uint32_t size; 
+    // number of directory entries = size / sizeof(dirEntry)
+
    // from 0 to 7
    // blocks have file names for directories and file contents for files
     uint16_t blocks[8]; 
 
-    // 4 additional bytes to make a total of 32
-    uint32_t padding;
+    // 6 additional bytes to make a total of 32
+    uint8_t padding[6];
 
 } i_node_t;
 
 typedef struct super_block {
-    int magicNumber;
+    uint32_t magicNumber;
     // i_node_t iNodeStart;
     // int blockCount;
     // int type;
-    int root_node_index;
+    uint32_t rootNodeIndex;
     // file_descriptor_t* dirDescriptor;
 } super_block_t;
 
@@ -50,24 +77,17 @@ typedef struct file_descriptor {
     int flag;
 } file_descriptor_t;
 
+// 32 + 2 + 30
 typedef struct dir_entry {
     char name[MAX_FILE_NAME];
-    // int nameLength;
-    int iNode;
-    short type;
+    
+    uint16_t iNode;
+    // short type;
     // is directory or not?
-    uint8_t extra[24];
+    uint8_t extra[30];
     // extra padding
 } dir_entry_t;
 
-// iNode of current_directory
-int current_directory_node;
-// there are 256 file_descriptors. these are not persisted though, so no need to store them in disk.
-file_descriptor_t fds[256];
-// allocated for = 1, not yet allocated = 0
-
-uint8_t block_allocation_map[256];
-uint8_t inode_allocation_map[256];
 
 
 void fs_init( void);
@@ -83,6 +103,14 @@ int fs_cd( char *dirName);
 int fs_link( char *old_fileName, char *new_fileName);
 int fs_unlink( char *fileName);
 int fs_stat( char *fileName, fileStat *buf);
+
+
+void allocmap_init(int map);
+int allocmap_getstatus(int map, int index);
+void allocmap_setstatus(int map, int index, int status);
+int allocmap_findfree(int map);
+
+//  make_dir_entry(char *entryName, int iNode);
 int fs_inodeBlock(int iNode);
 int fs_blockOffset(int iNode, int block);
 int inode_index(void);
@@ -91,12 +119,12 @@ void free_inode(int iNode);
 void free_block(int block);
 void read_inode(int iNode, char *nodeBlock);
 void write_inode(int iNode, char *nodeBlock);
-int findDirectoryEntry(int iNode, char *filename);
-int makeNode(char *nodeBlock, short type, int iNode);
-int findDirectoryEntryBlock(int iNode, char *fileName);
-int findDirectoryEntryOffset(int iNode, char *fileName);
-void removeDirectoryEntry(int iNode, char *fileName);
-void addDirectoryEntry(int directory_node, int entry_node, short type, char *fileName);
+// int findDirectoryEntry(int iNode, char *filename);
+// int makeNode(char *nodeBlock, short type, int iNode);
+// int findDirectoryEntryBlock(int iNode, char *fileName);
+// int findDirectoryEntryOffset(int iNode, char *fileName);
+// void removeDirectoryEntry(int iNode, char *fileName);
+// void addDirectoryEntry(int directory_node, int entry_node, short type, char *fileName);
 
 #define MAX_PATH_NAME 256  // This is the maximum supported "full" path len, eg: /foo/bar/test.txt, rather than the maximum individual filename len.
 #endif

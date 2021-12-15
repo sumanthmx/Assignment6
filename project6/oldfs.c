@@ -24,6 +24,14 @@
 // then we store bit allocation maps
 // then we check blocks starting at 2 to find iNode
 
+// iNode of current_directory
+int current_directory_node;
+// there are 256 file_descriptors. these are not persisted though, so no need to store them in disk.
+file_descriptor_t fds[256];
+// allocated for = 1, not yet allocated = 0
+
+uint8_t block_allocation_map[256];
+uint8_t inode_allocation_map[256];
 // need magicNum to check if the file system is correctly formatted
 // int magicNumber = 72;
 

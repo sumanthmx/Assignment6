@@ -1,7 +1,7 @@
 block.o: block.c common.h kernel.h util.h block.h usb.h thread.h
 blockFake.o: blockFake.c common.h block.h
 createimage.o: createimage.c
-fs.o: fs.c util.h common.h block.h fs.h shellutil.h
+fs.o: fs.c util.h common.h block.h fs.h
 interrupt.o: interrupt.c common.h interrupt.h kernel.h keyboard.h usb.h \
  thread.h memory.h scheduler.h util.h
 kernel.o: kernel.c common.h usb.h kernel.h thread.h interrupt.h \
@@ -11,6 +11,7 @@ keyboard.o: keyboard.c kernel.h common.h scheduler.h util.h mbox.h \
 mbox.o: mbox.c common.h thread.h kernel.h mbox.h util.h
 memory.o: memory.c common.h kernel.h scheduler.h memory.h thread.h util.h \
  interrupt.h usb.h
+oldfs.o: oldfs.c util.h common.h block.h fs.h shellutil.h
 process1.o: process1.c common.h syslib.h util.h
 process2.o: process2.c common.h syslib.h util.h
 process3.o: process3.c common.h syslib.h util.h
