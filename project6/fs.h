@@ -7,8 +7,11 @@
 #define FS_INCLUDED
 
 #define FS_SIZE 2048
-#define ROOT_DIRECTORY_INDEX 0
+#define MAX_FDS 256
 #define MAX_FILE_NAME 32
+#define MAX_FILE_SIZE 4096
+
+// max file size is 8 * 512
 
 #define INODE_MAP 0
 #define BLOCK_MAP 1
@@ -128,6 +131,7 @@ void write_inode(int iNode, char *nodeBlock);
 int make_inode(int iNode);
 int findDirectoryEntry(int iNode, char *filename);
 void addDirectoryEntry(int parentiNode, int childiNode, char *fileName);
+void removeDirectoryEntry(int parentiNode, char *fileName);
 // int makeNode(char *nodeBlock, short type, int iNode);
 // int findDirectoryEntryBlock(int iNode, char *fileName);
 // int findDirectoryEntryOffset(int iNode, char *fileName);
