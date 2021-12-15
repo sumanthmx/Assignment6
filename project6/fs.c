@@ -135,11 +135,6 @@ fs_mkdir( char *fileName) {
     // create directory
     if (make_inode(childINode) == -1) return -1;
 
-    // update parentNode size
-    parentNode.size += sizeof(dir_entry_t);
-    write_inode(current_directory_node, (char *)&parentNode);
-
-
     i_node_t childNode;
     read_inode(childINode, (char *)&childNode);
     childNode.type = DIRECTORY;
@@ -158,6 +153,11 @@ fs_mkdir( char *fileName) {
     block_read(block, tempBlock);
     bcopy((unsigned char *)&newEntry, (unsigned char *)&tempBlock[offset], sizeof(dir_entry_t));
     block_write(block, tempBlock);
+
+    // update parentNode size
+    parentNode.size += sizeof(dir_entry_t);
+    write_inode(current_directory_node, (char *)&parentNode);
+    
     return 0;
 }
 
@@ -366,7 +366,6 @@ int make_inode(int iNode) {
     node.size = 0;
     node.openCount = 0;
     node.linkCount = 1;
-
     // allocate 8 blocks for the inode
     // TO DO: set blocks one by one
     for (i = 0; i < 8; i++) {
