@@ -16,6 +16,7 @@
 #define ERROR_MSG(m)
 #endif
 
+
 // iNode of current_directory
 int current_directory_node;
 // there are 256 file_descriptors. these are not persisted though, so no need to store them in disk.
@@ -54,14 +55,42 @@ fs_mkfs( void) {
     allocmap_init(INODE_MAP);
     allocmap_init(BLOCK_MAP);
     // first inode and block go to root directory and superblock respectively
+
+    // preemptively designate the first two blocks to the super block and maps
+    
     current_directory_node = 0;
-    fs_mkdir("/");
 
     // create rootDirectory
-    dir_entry_t rootDirEntry;
+    make_inode(current_directory_node);
+    i_node_t node;
+    read_inode(current_directory_node, (char *)&node);
+    node.type = DIRECTORY;
+    write_inode(current_directory_node, (char *)&node);
+    // we know that this is at block_id 0
+    newdir_insert(current_directory_node, current_directory_node);
+
+    // create rootDirectory
     // bcopy(".")
     // update 
-    return -1;
+
+    // set all these fields to null for the file descriptor table
+    int i;
+    for (i = 0; i < 256; i++) {
+        fds[i].offset = 0;
+        fds[i].flag = 0;
+        fds[i].inUse = FALSE;
+        bzero(fds[i].name, MAX_FILE_NAME);
+    }
+
+    char tempBlock[BLOCK_SIZE];
+    bzero_block(tempBlock);
+    bcopy((unsigned char *)&superBlock, (unsigned char *)tempBlock, sizeof(super_block_t));
+    block_write(0, tempBlock);
+    // debug line
+    // printf("%d\n", sizeof(super_block_t));
+    return 0;
+    // cases of return -1 come from other failures
+    // return -1;
 }
 
 int 
@@ -91,7 +120,10 @@ fs_lseek( int fd, int offset) {
 
 int 
 fs_mkdir( char *fileName) {
-    // makes a new directory in current directory
+    // child not found in curr directory, so we can continue and create a new directory
+    // if (findDirectoryEntry(current_directory_node, fileName) != -1) return -1;
+    //makeInode;
+    //newdir_insert(current_directory_node, fileName, block);
     return -1;
 }
 
@@ -117,6 +149,18 @@ fs_unlink( char *fileName) {
 
 int 
 fs_stat( char *fileName, fileStat *buf) {
+    int inodeNo = findDirectoryEntry(current_directory_node, fileName);
+
+    if (inodeNo >= 0 && inodeNo < FS_SIZE) {
+        i_node_t node;
+        read_inode(inodeNo, (char *)&node);
+        buf->inodeNo = inodeNo;
+        buf->type = node.type;
+        buf->size = node.size;
+        buf->links = node.linkCount;
+        if (node.size % BLOCK_SIZE) buf->numBlocks = node.size / BLOCK_SIZE;
+        else buf->numBlocks = 1 + (node.size / BLOCK_SIZE);
+    }
     return -1;
 }
 
@@ -166,82 +210,131 @@ int allocmap_findfree(int map) {
         if (byte != 0xFF) {
             int position;
             for (position = 0; position < 8; position++) {
-                if ((byte && (1 << position)) == 0) return 8*i + position;
+                if ((byte & (1 << position)) == 0) return 8*i + position;
             }
         }
     }
     return -1;
 }
 
-
+// translates an entry from the block allocation map to the block in the disk
+int fs_dataBlock(int block_id) {
+    return DATA_BLOCK_START + block_id;
+}
 // helper function to find block that contains iNode
-// this 2 less than the real index, as the iNodes are allocated starting in the third block
 int fs_inodeBlock(int iNode) {
-    return ((iNode * sizeof(i_node_t)) / BLOCK_SIZE);
+    return INODE_BLOCK_START + ((iNode * sizeof(i_node_t)) / BLOCK_SIZE);
 }
 
 // helper function to find offset of iNode into its block
-// the block passed in here is 2 less than the real index, as the iNodes are allocated starting in the third block
-int fs_blockOffset(int iNode, int block) {
-    return (iNode * sizeof(i_node_t)) - (block * BLOCK_SIZE);
+int fs_inodeBlockOffset(int iNode) {
+    return (iNode * sizeof(i_node_t)) % BLOCK_SIZE;
 }
-    // read in the iNode from the disk
-    // add 2 cause first is super (no iNodes in 1st one) and second is maps
+
+// read in the iNode from the disk
 void read_inode(int iNode, char *nodeBlock) {
     char tempBlock[BLOCK_SIZE];
-    int blockToRead = 2 + fs_inodeBlock(iNode);
+    int blockToRead = fs_inodeBlock(iNode);
     block_read(blockToRead, tempBlock);
-    bcopy((unsigned char *)&tempBlock[fs_blockOffset(iNode, blockToRead - 2)], (unsigned char *)nodeBlock, sizeof(i_node_t));
+    bcopy((unsigned char *)&tempBlock[fs_inodeBlockOffset(iNode)], (unsigned char *)nodeBlock, sizeof(i_node_t));
 }
+
 // writes an iNode's information to the disk
 void write_inode(int iNode, char *nodeBlock) {
     char tempBlock[BLOCK_SIZE];
-    int blockToWrite = 2 + fs_inodeBlock(iNode);
+    int blockToWrite = fs_inodeBlock(iNode);
     block_read(blockToWrite, tempBlock);
-    bcopy((unsigned char *)nodeBlock, (unsigned char *)&tempBlock[fs_blockOffset(iNode, blockToWrite - 2)], sizeof(i_node_t));
+    bcopy((unsigned char *)nodeBlock, (unsigned char *)&tempBlock[fs_inodeBlockOffset(iNode)], sizeof(i_node_t));
     block_write(blockToWrite, tempBlock);
 }
 
-/*
+// given iNodes and a datablock, write in the directory into the block
+void newdir_insert(int parentNode, int currentNode) {
+    i_node_t node;
+    read_inode(currentNode, (char *)&node);
+    node.size = 2 * sizeof(dir_entry_t);
+
+    char tempBlock[BLOCK_SIZE];
+    bzero_block(tempBlock);
+    dir_entry_t currDirEntry;
+    dir_entry_t parDirEntry;
+    char parentStr[2] = "..";
+    char currStr[1] = ".";
+    currDirEntry.iNode = currentNode;
+    parDirEntry.iNode = parentNode;
+    bcopy((unsigned char*)currStr, (unsigned char*)&currDirEntry.name, strlen(currStr));
+    bcopy((unsigned char*)parentStr, (unsigned char*)&parDirEntry.name, strlen(parentStr));
+    bcopy((unsigned char *)&currDirEntry, (unsigned char *)tempBlock, sizeof(dir_entry_t));
+    bcopy((unsigned char *)&parDirEntry, (unsigned char *)&tempBlock[sizeof(dir_entry_t)], sizeof(dir_entry_t));
+    block_write(fs_dataBlock(node.blocks[0]), tempBlock);
+
+    write_inode(currentNode, (char *)&node);
+
+}
+
 // returns -1 if not found
 // otherwise returns the iNode of the directoryEntry
 // helper function, only called on directories
 int findDirectoryEntry(int iNode, char *fileName) {
-    char tempBlock[BLOCK_SIZE];
-    char nodeBlock[sizeof(i_node_t)];
-    read_inode(iNode, nodeBlock);
-    i_node_t *directoryNode = (i_node_t *)nodeBlock;
-    int blockToRead;
-    // find the block containing the directory [
+    i_node_t directoryNode;
+    read_inode(iNode, (char *)&directoryNode);
     // assumes these blocks ONLY contain entries and that sizeof(dir_entry_t) evenly divides BLOCK_SIZE
-    int size = directoryNode->size;
-    // int length = size / sizeof(dir_entry_t);
-    int entriesPerFullBlock = BLOCK_SIZE / sizeof(dir_entry_t);
-    int entriesInBlock = entriesPerFullBlock;
-    int sum = 0;
-    int a = 0;
-    int b;
-    // find all directory entries 
-    while (sum < size) {
-        if (size - sum < sizeof(dir_entry_t) * entriesPerFullBlock) {
-            entriesInBlock = (size - sum) / sizeof(dir_entry_t);
-        }
-        blockToRead = directoryNode->blocks[a];
-        block_read(blockToRead, tempBlock);
-        for (b = 0; b < entriesInBlock; b++) {
-            sum += sizeof(dir_entry_t);
-            dir_entry_t *dirEntry = (dir_entry_t *)(&tempBlock[b * sizeof(dir_entry_t)]);
-            if (same_string(dirEntry->name, fileName)) {
-                return dirEntry->iNode;
+    int entries = directoryNode.size / sizeof(dir_entry_t);
+
+    int block;
+    // For each block of a directory, as long as there are entries left to read
+    for (block = 0; block < BLOCKS_PER_INODE && entries > 0; block++) {
+        char currentBlock[BLOCK_SIZE];
+        block_read(directoryNode.blocks[block], currentBlock);
+
+        int entries_in_block = entries;
+        if (entries_in_block > DIRECTORY_ENTRIES_PER_BLOCK) entries_in_block = DIRECTORY_ENTRIES_PER_BLOCK;
+        int entry_index;
+
+        for (entry_index = 0; entry_index < entries_in_block; entry_index++) {
+            dir_entry_t *current_entry = (dir_entry_t*)currentBlock + entry_index;
+            if (same_string(current_entry->name, fileName)) {
+                return current_entry->iNode;
             }
         }
-        a++;
-        entriesInBlock = entriesPerFullBlock;
+
+        entries -= DIRECTORY_ENTRIES_PER_BLOCK;
     }
+
     // filename not found in current directory
     return -1;
 }
 
+// return 0 on success
+// return -1 on failure
+// ONLY allocate blocks for iNode
+int make_inode(int iNode) {
+    int i;
+    i_node_t node;
+    // default type... change in calling functions
+    node.type = 0;
+    node.size = 0;
+    node.openCount = 0;
+    node.linkCount = 1;
+
+    // allocate 8 blocks for the inode
+    // TO DO: set blocks one by one
+    for (i = 0; i < 8; i++) {
+        node.blocks[i] = allocmap_findfree(BLOCK_MAP);
+        allocmap_setstatus(BLOCK_MAP, node.blocks[i], IN_USE);
+    }
+    if (i < 8) {
+    // for loop did not finish
+        while (i >= 0) {
+            allocmap_setstatus(BLOCK_MAP, node.blocks[i], NOT_IN_USE);
+            i--;
+        }
+        return -1;
+    }   
+    write_inode(iNode, (char *)&node);
+    return 0;
+}
+/*
 // returns -1 if not found
 // otherwise returns the block in which the directoryEntry is stored in
 // helper function, only called on directories

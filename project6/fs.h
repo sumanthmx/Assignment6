@@ -16,6 +16,12 @@
 
 #define IN_USE 1
 #define NOT_IN_USE 0
+
+#define BLOCKS_PER_INODE 8
+#define DIRECTORY_ENTRIES_PER_BLOCK BLOCK_SIZE / sizeof(dir_entry_t)
+
+#define INODE_BLOCK_START 2
+#define DATA_BLOCK_START 130
 // size is byteCount
 // each node points to 8 blocks
 // designed to TAKE 32 bytes: 
@@ -104,22 +110,24 @@ int fs_link( char *old_fileName, char *new_fileName);
 int fs_unlink( char *fileName);
 int fs_stat( char *fileName, fileStat *buf);
 
-
+// access functions for the block and inode allocation maps in memory
 void allocmap_init(int map);
 int allocmap_getstatus(int map, int index);
 void allocmap_setstatus(int map, int index, int status);
 int allocmap_findfree(int map);
 
+void newdir_insert(int parentNode, int currentNode);
 //  make_dir_entry(char *entryName, int iNode);
 int fs_inodeBlock(int iNode);
-int fs_blockOffset(int iNode, int block);
+int fs_inodeBlockOffset(int iNode);
 int inode_index(void);
 int block_index(void);
 void free_inode(int iNode);
 void free_block(int block);
 void read_inode(int iNode, char *nodeBlock);
 void write_inode(int iNode, char *nodeBlock);
-// int findDirectoryEntry(int iNode, char *filename);
+int make_inode(int iNode);
+int findDirectoryEntry(int iNode, char *filename);
 // int makeNode(char *nodeBlock, short type, int iNode);
 // int findDirectoryEntryBlock(int iNode, char *fileName);
 // int findDirectoryEntryOffset(int iNode, char *fileName);

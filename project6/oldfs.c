@@ -607,7 +607,6 @@ int makeNode(char *nodeBlock, short type, int iNode) {
         node->openCount = 1;
     }
     node->linkCount = 1;
-    node->lastBlockIndex = 0;
     for (i = 0; i < 8; i++) {
         int j = block_index();
         if (j == -1) {
