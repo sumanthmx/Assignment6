@@ -70,8 +70,7 @@ fs_mkfs( void) {
     newdir_insert(current_directory_node, current_directory_node);
 
     // create rootDirectory
-    // bcopy(".")
-    // update 
+    
 
     // set all these fields to null for the file descriptor table
     int i;
@@ -121,10 +120,45 @@ fs_lseek( int fd, int offset) {
 int 
 fs_mkdir( char *fileName) {
     // child not found in curr directory, so we can continue and create a new directory
-    // if (findDirectoryEntry(current_directory_node, fileName) != -1) return -1;
-    //makeInode;
-    //newdir_insert(current_directory_node, fileName, block);
-    return -1;
+    int i = findDirectoryEntry(current_directory_node, fileName);
+    if (i != -1) return -1;
+
+    // if no iNodes are available return error
+    int childINode = allocmap_findfree(INODE_MAP);
+    if (childINode == -1) return -1;
+
+    // if no space for a new dirEntry is available return error
+    i_node_t parentNode;
+    read_inode(current_directory_node, (char *)&parentNode);
+    if (parentNode.size + sizeof(dir_entry_t) > 8 * BLOCK_SIZE) return -1;
+
+    // create directory
+    if (make_inode(childINode) == -1) return -1;
+
+    // update parentNode size
+    parentNode.size += sizeof(dir_entry_t);
+    write_inode(current_directory_node, (char *)&parentNode);
+
+
+    i_node_t childNode;
+    read_inode(childINode, (char *)&childNode);
+    childNode.type = DIRECTORY;
+    write_inode(childINode, (char *)&childNode);
+    newdir_insert(current_directory_node, childINode);
+
+    // make dirEntry for child in current_running
+    dir_entry_t newEntry;
+    newEntry.iNode = childINode;
+    bcopy((unsigned char*)fileName, (unsigned char*)&newEntry.name, strlen(fileName)+1);
+
+    // add dirEntry 
+    int block = fs_dataBlock(parentNode.blocks[parentNode.size / BLOCK_SIZE]);
+    int offset = parentNode.size % BLOCK_SIZE;
+    char tempBlock[BLOCK_SIZE];
+    block_read(block, tempBlock);
+    bcopy((unsigned char *)&newEntry, (unsigned char *)&tempBlock[offset], sizeof(dir_entry_t));
+    block_write(block, tempBlock);
+    return 0;
 }
 
 int 
@@ -134,7 +168,17 @@ fs_rmdir( char *fileName) {
 
 int 
 fs_cd( char *dirName) {
-    return -1;
+    // need to be existing to cd into
+    int iNode = findDirectoryEntry(current_directory_node, dirName);
+    if (iNode == -1) return -1;
+
+    // cd into directory only
+    i_node_t node;
+    read_inode(iNode, (char *)&node);
+    if (node.type != DIRECTORY) return -1;
+
+    current_directory_node = iNode;
+    return 0;
 }
 
 int 
@@ -312,7 +356,8 @@ int findDirectoryEntry(int iNode, char *fileName) {
 
 // return 0 on success
 // return -1 on failure
-// ONLY allocate blocks for iNode
+// ONLY allocate blocks for iNode, do other manipulations in other
+// iNode is allocated in map by make_inode
 int make_inode(int iNode) {
     int i;
     i_node_t node;
@@ -336,6 +381,7 @@ int make_inode(int iNode) {
         }
         return -1;
     }   
+    allocmap_setstatus(INODE_MAP, iNode, IN_USE);
     write_inode(iNode, (char *)&node);
     return 0;
 }
