@@ -77,8 +77,8 @@ fs_mkfs( void) {
     for (i = 0; i < 256; i++) {
         fds[i].offset = 0;
         fds[i].flag = 0;
+        fds[i].iNode = -1;
         fds[i].inUse = FALSE;
-        bzero(fds[i].name, MAX_FILE_NAME);
     }
 
     char tempBlock[BLOCK_SIZE];
@@ -94,7 +94,59 @@ fs_mkfs( void) {
 
 int 
 fs_open( char *fileName, int flags) {
-    return -1;
+    // check for open file descriptor
+    int index;
+    for (index = 0; index < 256; index++) {
+        if (!fds[index].inUse) break;
+    }
+    // all fds in use, cannot make a new file descriptor
+    if (index == 256) {
+        return -1;
+    }
+    // check if in directory
+    // do not create node if in RDONLY
+    int iNode = findDirectoryEntry(current_directory_node, fileName);
+    if (iNode == -1 && flags == FS_O_RDONLY) return -1;
+    if (iNode != -1) {
+        i_node_t tempNode;
+        read_inode(iNode, (char *)&tempNode);
+        // illegal to open directory outside RD_ONLY
+        if (tempNode.type == DIRECTORY && flags != FS_O_RDONLY) return -1;
+        // debug line
+        printf("%d\n", tempNode.openCount);
+        tempNode.openCount++;
+        write_inode(iNode, (char *)&tempNode);
+    }
+    else { 
+        // we open a file here
+        iNode = allocmap_findfree(INODE_MAP);
+        // check if freeNode exists or not, and if we can create a new iNode
+        if (iNode == -1) return -1;
+
+        i_node_t currentNode;
+        read_inode(current_directory_node, (char *)&currentNode);
+        // check if there is space to create a new directory entry to begin with
+        if (currentNode.size + sizeof(dir_entry_t) > 8 * BLOCK_SIZE) return -1;
+
+        // check for space for blocks
+        if (make_inode(iNode) == -1) return -1;
+
+        i_node_t newFileNode;
+        read_inode(iNode, (char *)&newFileNode);
+        newFileNode.type = FILE_TYPE;
+        // new files are opened here, and have open count = 1 to start
+        newFileNode.openCount = 1;
+        write_inode(iNode, (char *)&newFileNode);
+
+        addDirectoryEntry(current_directory_node, iNode, fileName);
+        // make a file
+    }
+
+    fds[index].inUse = TRUE;
+    fds[index].offset = 0;
+    fds[index].iNode = iNode;
+    fds[index].flag = flags;
+    return 0;
 }
 
 int 
@@ -114,7 +166,11 @@ fs_write( int fd, char *buf, int count) {
 
 int 
 fs_lseek( int fd, int offset) {
-    return -1;
+    if (!fds[fd].inUse) return -1;
+    else {
+        fds[fd].offset = offset;
+    }
+    return 0;
 }
 
 int 
@@ -148,6 +204,68 @@ fs_mkdir( char *fileName) {
 
 int 
 fs_rmdir( char *fileName) {
+       if (same_string(fileName, ".") || same_string(fileName, "..")) return -1;
+
+    i_node_t parentNode;
+    read_inode(current_directory_node, (char *)&parentNode);
+
+    dir_entry_t last_entry;
+
+    char tempBlock[BLOCK_SIZE];
+    block_read(fs_dataBlock(parentNode.blocks[parentNode.size / BLOCK_SIZE]), tempBlock);
+    bcopy((unsigned char *)&tempBlock[parentNode.size % BLOCK_SIZE], (unsigned char *)&last_entry, sizeof(dir_entry_t));
+
+    // For each block of a directory, as long as there are entries left to read
+    int block;
+    int entries = parentNode.size / sizeof(dir_entry_t);
+    int nodeFound = 0;
+    int currentInode = 0;
+    for (block = 0; block < BLOCKS_PER_INODE && entries > 0; block++) {
+        char currentBlock[BLOCK_SIZE];
+        block_read(fs_dataBlock(parentNode.blocks[block]), currentBlock);
+
+        int entries_in_block = entries;
+        if (entries_in_block > DIRECTORY_ENTRIES_PER_BLOCK) entries_in_block = DIRECTORY_ENTRIES_PER_BLOCK;
+        int entry_index;
+
+        for (entry_index = 0; entry_index < entries_in_block; entry_index++) {
+            dir_entry_t *current_entry = (dir_entry_t*)currentBlock + entry_index;
+            if (same_string(current_entry->name, fileName)) {
+                // Overwrite this with the last node
+                currentInode = current_entry->iNode;
+                i_node_t currentNode;
+                read_inode(currentInode, (char *)&currentNode);
+
+                // If the directory to remove is not empty, error out
+                if (currentNode.size != 2*sizeof(dir_entry_t)) return -1;
+
+                int i;
+                for (i = 0; i < 8; i++) {
+                    allocmap_setstatus(BLOCK_MAP, currentNode.blocks[i], NOT_IN_USE);
+                }
+
+                bcopy((unsigned char *)&last_entry, (unsigned char *)current_entry, sizeof(dir_entry_t));
+
+                nodeFound = 1;
+                break;
+            }
+        }
+
+        entries -= DIRECTORY_ENTRIES_PER_BLOCK;
+        if (nodeFound) {
+            break;
+        }
+    }
+
+    // If we deleted a directory entry by replacing it with the last item,
+    if (nodeFound) {
+        // Update the parent node
+        parentNode.size -= sizeof(dir_entry_t);
+        write_inode(current_directory_node, (char *)&parentNode);
+        allocmap_setstatus(INODE_MAP, currentInode, NOT_IN_USE);
+        return 0;
+    }
+
     return -1;
 }
 

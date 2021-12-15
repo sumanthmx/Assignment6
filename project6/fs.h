@@ -76,7 +76,6 @@ typedef struct super_block {
 } super_block_t;
 
 typedef struct file_descriptor {
-    char name[MAX_FILE_NAME];
     bool_t inUse;
     int iNode;
     int offset;
