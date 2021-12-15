@@ -113,7 +113,7 @@ fs_open( char *fileName, int flags) {
         // illegal to open directory outside RD_ONLY
         if (tempNode.type == DIRECTORY && flags != FS_O_RDONLY) return -1;
         // debug line
-        printf("%d\n", tempNode.openCount);
+        //printf("%d\n", tempNode.openCount);
         tempNode.openCount++;
         write_inode(iNode, (char *)&tempNode);
     }
@@ -146,7 +146,7 @@ fs_open( char *fileName, int flags) {
     fds[index].offset = 0;
     fds[index].iNode = iNode;
     fds[index].flag = flags;
-    return 0;
+    return index;
 }
 
 int 
@@ -204,16 +204,26 @@ fs_mkdir( char *fileName) {
 
 int 
 fs_rmdir( char *fileName) {
-       if (same_string(fileName, ".") || same_string(fileName, "..")) return -1;
+    // cannot remove parent or current directory
+    if (same_string(fileName, ".") || same_string(fileName, "..")) return -1;
 
     i_node_t parentNode;
     read_inode(current_directory_node, (char *)&parentNode);
 
     dir_entry_t last_entry;
-
     char tempBlock[BLOCK_SIZE];
-    block_read(fs_dataBlock(parentNode.blocks[parentNode.size / BLOCK_SIZE]), tempBlock);
-    bcopy((unsigned char *)&tempBlock[parentNode.size % BLOCK_SIZE], (unsigned char *)&last_entry, sizeof(dir_entry_t));
+    int lastBlock = parentNode.size / BLOCK_SIZE;
+    int lastOffset = parentNode.size % BLOCK_SIZE;
+
+    if(lastOffset == 0) {
+        lastBlock -= 1;
+        lastOffset = 7 * sizeof(dir_entry_t);
+    } else {
+        lastOffset -= sizeof(dir_entry_t);
+    }
+
+    block_read(fs_dataBlock(parentNode.blocks[lastBlock]), tempBlock);
+    bcopy((unsigned char *)&tempBlock[lastOffset], (unsigned char *)&last_entry, sizeof(dir_entry_t));
 
     // For each block of a directory, as long as there are entries left to read
     int block;
