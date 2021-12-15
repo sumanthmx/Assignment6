@@ -261,38 +261,29 @@ static void shell_cd( void) {
 
 static void shell_ls( void) {
     //should a system call print to the screen?
-    char tempBlock[BLOCK_SIZE];
-    char nodeBlock[sizeof(i_node_t)];
-    read_inode(current_directory_node, nodeBlock);
-    i_node_t *directoryNode = (i_node_t *)&nodeBlock[0];
-    int blockToRead;
-
-    // find the block containing the directory [FIXED]
+    i_node_t directoryNode;
+    read_inode(current_directory_node, (char *)&directoryNode);
     // assumes these blocks ONLY contain entries and that sizeof(dir_entry_t) evenly divides BLOCK_SIZE
-    int size = directoryNode->size;
-    // debug line
-    // printf("%d\n", size);
-    int entriesPerFullBlock = BLOCK_SIZE / sizeof(dir_entry_t);
-    int entriesInBlock = entriesPerFullBlock;
-    int sum = 0;
-    int a = 0;
-    int b;
-    // find all directory entries and print em!
-    while (sum < size) {
-        if (size - sum < BLOCK_SIZE) {
-            entriesInBlock = (size - sum) / sizeof(dir_entry_t);
+    int entries = directoryNode.size / sizeof(dir_entry_t);
+
+    int block;
+    // For each block of a directory, as long as there are entries left to read
+    for (block = 0; block < BLOCKS_PER_INODE && entries > 0; block++) {
+        char currentBlock[BLOCK_SIZE];
+        block_read(fs_dataBlock(directoryNode.blocks[block]), currentBlock);
+
+        int entries_in_block = entries;
+        if (entries_in_block > DIRECTORY_ENTRIES_PER_BLOCK) entries_in_block = DIRECTORY_ENTRIES_PER_BLOCK;
+        int entry_index;
+
+        // print name of each dir entry
+        for (entry_index = 0; entry_index < entries_in_block; entry_index++) {
+            dir_entry_t *current_entry = (dir_entry_t*)currentBlock + entry_index;
+            writeStr(current_entry->name);
+            writeStr("\n");
         }
-        blockToRead = directoryNode->blocks[a];
-        // debug line
-        // printf("%d\n", blockToRead);
-        block_read(blockToRead, tempBlock);
-        for (b = 0; b < entriesInBlock; b++) {
-            sum += sizeof(dir_entry_t);
-            dir_entry_t *dirEntry = (dir_entry_t *)(&tempBlock[b * sizeof(dir_entry_t)]);
-            writeStr(dirEntry->name);
-        }
-        a++;
-        entriesInBlock = entriesPerFullBlock;
+
+        entries -= DIRECTORY_ENTRIES_PER_BLOCK;
     }
     
   // writeStr("Problem with ls\n");
