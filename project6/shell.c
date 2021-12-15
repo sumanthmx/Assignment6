@@ -284,7 +284,7 @@ static void shell_ls( void) {
         }
         blockToRead = directoryNode->blocks[a];
         // debug line
-        printf("%d\n", blockToRead);
+        // printf("%d\n", blockToRead);
         block_read(blockToRead, tempBlock);
         for (b = 0; b < entriesInBlock; b++) {
             sum += sizeof(dir_entry_t);

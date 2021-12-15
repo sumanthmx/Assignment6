@@ -19,7 +19,7 @@ We had allocated the first block for the supernode, which enables us to check wh
 The second block is allocated for the blockAllocationMap and the iNodeAllocationMap, which are uint8 arrays of length 256. 
 In these maps, each bit corresponds to a single block (or iNode), and we iterate through them bitwise. We also call helper 
 functions to mark these bits as iNodes and blocks are freed and occupied. These two maps take a total of 512 bytes, and are 
-perfectly stored in the second block.
+perfectly stored in the second block. However, we did not actually store these maps in local memory
 
 The next 128 blocks contain the 2048 iNodes. We made these iNodes 32 bytes each, so they fit perfectly into the blocks. 
 Whenever files or directories are created, blocks for these processes are allocated for afterwards using the remaining blocks. 
@@ -35,5 +35,5 @@ The unlink function is implemented similarly. First we check if there even exist
 corresponds to a FILE (if it is a directory return -1). If the linkCount is 1, check to see if the openCount is zero and then remove the file entirely by freeing its
 iNode id and blocks and removing its directory entry. Otherwise, we decrement linkCount and update the linkCount to the disk.
 
-I apologize for my minimal completion of this assignment. I tried my level best and spent 55-63 hours working on this, but
+I apologize for my minimal completion of this assignment. I tried my level best and spent 67-75 hours working on this, but
 it ultimately was not enough.

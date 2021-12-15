@@ -158,8 +158,10 @@ fs_stat( char *fileName, fileStat *buf) {
         buf->type = node.type;
         buf->size = node.size;
         buf->links = node.linkCount;
-        if (node.size % BLOCK_SIZE) buf->numBlocks = node.size / BLOCK_SIZE;
+        if (node.size % BLOCK_SIZE == 0) buf->numBlocks = node.size / BLOCK_SIZE;
         else buf->numBlocks = 1 + (node.size / BLOCK_SIZE);
+        // debug 
+        // printf("d\n", )
     }
     return -1;
 }
@@ -258,12 +260,14 @@ void newdir_insert(int parentNode, int currentNode) {
     bzero_block(tempBlock);
     dir_entry_t currDirEntry;
     dir_entry_t parDirEntry;
-    char parentStr[2] = "..";
-    char currStr[1] = ".";
+    char *parentStr = "..";
+    char *currStr = ".";
     currDirEntry.iNode = currentNode;
     parDirEntry.iNode = parentNode;
-    bcopy((unsigned char*)currStr, (unsigned char*)&currDirEntry.name, strlen(currStr));
-    bcopy((unsigned char*)parentStr, (unsigned char*)&parDirEntry.name, strlen(parentStr));
+
+    // copy str null bytes as well
+    bcopy((unsigned char*)currStr, (unsigned char*)&currDirEntry.name, strlen(currStr) + 1);
+    bcopy((unsigned char*)parentStr, (unsigned char*)&parDirEntry.name, strlen(parentStr) + 1);
     bcopy((unsigned char *)&currDirEntry, (unsigned char *)tempBlock, sizeof(dir_entry_t));
     bcopy((unsigned char *)&parDirEntry, (unsigned char *)&tempBlock[sizeof(dir_entry_t)], sizeof(dir_entry_t));
     block_write(fs_dataBlock(node.blocks[0]), tempBlock);
@@ -285,7 +289,7 @@ int findDirectoryEntry(int iNode, char *fileName) {
     // For each block of a directory, as long as there are entries left to read
     for (block = 0; block < BLOCKS_PER_INODE && entries > 0; block++) {
         char currentBlock[BLOCK_SIZE];
-        block_read(directoryNode.blocks[block], currentBlock);
+        block_read(fs_dataBlock(directoryNode.blocks[block]), currentBlock);
 
         int entries_in_block = entries;
         if (entries_in_block > DIRECTORY_ENTRIES_PER_BLOCK) entries_in_block = DIRECTORY_ENTRIES_PER_BLOCK;
