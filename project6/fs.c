@@ -160,6 +160,7 @@ fs_stat( char *fileName, fileStat *buf) {
         buf->links = node.linkCount;
         if (node.size % BLOCK_SIZE == 0) buf->numBlocks = node.size / BLOCK_SIZE;
         else buf->numBlocks = 1 + (node.size / BLOCK_SIZE);
+        return 0;
         // debug 
         // printf("d\n", )
     }
