@@ -54,6 +54,7 @@ def multiple_names_test():
     print('***************')
     sys.stdout.flush()
 
+
 print "......Starting my tests\n\n"
 sys.stdout.flush()
 spawn_lnxsh()

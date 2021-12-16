@@ -179,8 +179,6 @@ fs_read( int fd, char *buf, int count) {
 
     // read files only
     if (node.type != FILE_TYPE) return -1;
-    // if reading count bytes from the offset exceeds the size, this is an error
-    if (count > node.size - fds[fd].offset) return -1;
     int bytesRead = 0;
 
     while (bytesRead < count && descriptor.offset + bytesRead < node.size) {
@@ -189,17 +187,24 @@ fs_read( int fd, char *buf, int count) {
         int currentBlockOffset = (descriptor.offset + bytesRead) % BLOCK_SIZE;
         int bytesToRead = count;
        
-        if (currentBlockOffset + count > BLOCK_SIZE*currentBlock) {
+       /*
+        printf("Bytes to read: %d\n", bytesToRead);
+        printf("Bytes read: %d\n", bytesRead);
+        printf("Block Offset: %d\n", currentBlockOffset);
+        printf("Block: %d\n", currentBlock);
+        */
+        
+        if (currentBlockOffset + bytesToRead > BLOCK_SIZE*(currentBlock + 1)) {
             bytesToRead = BLOCK_SIZE * (currentBlock + 1) - currentBlockOffset;
         }
-
+        if (bytesToRead == 0) break;
         char tempBlock[BLOCK_SIZE];
         block_read(fs_dataBlock(node.blocks[currentBlock]), tempBlock);
         bcopy((unsigned char *)&tempBlock[currentBlockOffset], (unsigned char*)buf, bytesToRead);
        
         bytesRead += bytesToRead;
     }
-
+    fds[fd].offset += bytesRead;
     return bytesRead;
 }
 
@@ -210,7 +215,6 @@ fs_write( int fd, char *buf, int count) {
     file_descriptor_t descriptor = fds[fd];
     i_node_t node;
     read_inode(descriptor.iNode, (char *)&node);
-
 
     if (node.type != FILE_TYPE || descriptor.offset >= MAX_FILE_SIZE) return -1;
 
@@ -251,7 +255,7 @@ fs_write( int fd, char *buf, int count) {
    
     node.size = descriptor.offset + bytesWritten;
     write_inode(descriptor.iNode, (char *)&node);
-
+    fds[fd].offset += bytesWritten + bytesPadded;
     return bytesWritten + bytesPadded;
 }
 
@@ -699,7 +703,7 @@ void removeDirectoryEntry(int parentiNode, char *fileName) {
             if (same_string(current_entry->name, fileName)) {
                 // Overwrite this with the last node
                 // debug
-                printf("%d", strlen(fileName));
+                // printf("%d", strlen(fileName));
                 // printf('\n');
                 currentInode = current_entry->iNode;
                 i_node_t currentNode;

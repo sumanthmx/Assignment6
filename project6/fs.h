@@ -118,6 +118,7 @@ int allocmap_getstatus(int map, int index);
 void allocmap_setstatus(int map, int index, int status);
 int allocmap_findfree(int map);
 
+int fs_dataBlock(int block_id);
 void newdir_insert(int parentNode, int currentNode);
 //  make_dir_entry(char *entryName, int iNode);
 int fs_inodeBlock(int iNode);
