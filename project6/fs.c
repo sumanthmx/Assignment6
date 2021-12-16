@@ -170,6 +170,7 @@ fs_close( int fd) {
 
 int 
 fs_read( int fd, char *buf, int count) {
+    // fd needs to be a valid descriptor index, and this needs to be in use
     if (fd < 0 || fd > MAX_FDS || !fds[fd].inUse) return -1;
 
     i_node_t node;
@@ -178,9 +179,9 @@ fs_read( int fd, char *buf, int count) {
 
     // read files only
     if (node.type != FILE_TYPE) return -1;
-
+    // if reading count bytes from the offset exceeds the size, this is an error
+    if (count > node.size - fds[fd].offset) return -1;
     int bytesRead = 0;
-   
 
     while (bytesRead < count && descriptor.offset + bytesRead < node.size) {
         // keep reading bytes through the blocks
