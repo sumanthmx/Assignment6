@@ -53,6 +53,16 @@ def multiple_names_test():
     print do_exit()
     print('***************')
     sys.stdout.flush()
+    
+# attempts to remove parent directory
+def remove_parent_test()
+    print('****Remove Failure****')
+    issue('mkfs')
+    issue('mkdir directory')
+    issue('rmdir ..') # should fail
+    print do_exit()
+    print('***************')
+    sys.stdout.flush()
 
 
 print "......Starting my tests\n\n"
@@ -63,5 +73,7 @@ spawn_lnxsh()
 link_and_fail_test()
 spawn_lnxsh()
 multiple_names_test()
+spawn_lnxsh()
+remove_parent_test()
 # Verify that file system hasn't grow too large
 check_fs_size()
