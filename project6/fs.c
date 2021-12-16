@@ -334,9 +334,11 @@ fs_link( char *old_fileName, char *new_fileName) {
     if (iNode == -1) return -1;
 
     // check if we have enough size left for another dirEntry
+    // do not link a directory
     i_node_t node;
     read_inode(current_directory_node, (char *)&node);
     if (node.size + sizeof(dir_entry_t) > 8 * BLOCK_SIZE) return -1;
+    if (node.type == DIRECTORY) return -1;
 
     // increment linkCount of this node
     read_inode(iNode, (char *)&node);
