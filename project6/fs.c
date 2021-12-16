@@ -171,7 +171,7 @@ fs_close( int fd) {
 int 
 fs_read( int fd, char *buf, int count) {
     // fd needs to be a valid descriptor index, and this needs to be in use
-    if (fd < 0 || fd > MAX_FDS || !fds[fd].inUse) return -1;
+    if (fd < 0 || fd > MAX_FDS || !fds[fd].inUse || fds[fd].flag == FS_O_WRONLY) return -1;
 
     i_node_t node;
     file_descriptor_t descriptor = fds[fd];
@@ -205,7 +205,7 @@ fs_read( int fd, char *buf, int count) {
 
 int 
 fs_write( int fd, char *buf, int count) {
-    if (fd < 0 || fd > MAX_FDS || !fds[fd].inUse) return -1;
+    if (fd < 0 || fd > MAX_FDS || !fds[fd].inUse || fds[fd].flag == FS_O_RDONLY) return -1;
 
     file_descriptor_t descriptor = fds[fd];
     i_node_t node;
