@@ -75,6 +75,17 @@ def change_directory_test():
     print('***************')
     sys.stdout.flush()
     
+# attempts to close an unopened file descriptor
+def close_unopened_test():
+    print('****Remove Failure****')
+    issue('mkfs')
+    issue('open randomfile 3') # File handle is: 0
+    issue('open happy 3') # File handle is: 1
+    issue('close 2') # should fail
+    print do_exit()
+    print('***************')
+    sys.stdout.flush()
+    
 print "......Starting my tests\n\n"
 sys.stdout.flush()
 spawn_lnxsh()
@@ -87,5 +98,7 @@ spawn_lnxsh()
 remove_parent_test()
 spawn_lnxsh()
 change_directory_test()
+spawn_lnxsh()
+close_unopened_test()
 # Verify that file system hasn't grow too large
 check_fs_size()
