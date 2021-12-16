@@ -55,7 +55,7 @@ def multiple_names_test():
     sys.stdout.flush()
     
 # attempts to remove parent directory
-def remove_parent_test()
+def remove_parent_test():
     print('****Remove Failure****')
     issue('mkfs')
     issue('mkdir directory')
@@ -65,7 +65,7 @@ def remove_parent_test()
     sys.stdout.flush()
 
 # attempts to change directories into a file
-def change_directory_test()
+def change_directory_test():
     print('****Remove Failure****')
     issue('mkfs')
     issue('open randomfile 3')
