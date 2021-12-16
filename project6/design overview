@@ -3,7 +3,7 @@ For this assignment, I utilized four different data structures.
 I used a directory entry, which contained a file name, a file type (directory / file), and an extra array field (to pad for memory to make this a multiple of 32). 
 
 I used a file descriptor, which contained a bool_t (for whether or not the descriptor is occupied), an int for offset (into a file), an int for iNode 
-(the iNode which corresponds to the file), and the flag (which represents the read / write privileges), as well as the fileName. 
+(the iNode which corresponds to the file), and the flag (which represents the read / write privileges). 
 
 I used an i node struct, which has a uint16 link count (for number of files linked to it), a uint16 open count (number of processes which have a file open), 
 an array of uint16s (which correspond to block indices), an int for size (which contains the number of bytes the file occupies), and a short for 
@@ -19,10 +19,12 @@ We had allocated the first block for the supernode, which enables us to check wh
 The second block is allocated for the blockAllocationMap and the iNodeAllocationMap, which are uint8 arrays of length 256. 
 In these maps, each bit corresponds to a single block (or iNode), and we iterate through them bitwise. We also call helper 
 functions to mark these bits as iNodes and blocks are freed and occupied. These two maps take a total of 512 bytes, and are 
-perfectly stored in the second block. However, we did not actually store these maps in local memory
+perfectly stored in the second block. However, we did not actually store these maps in local memory, and solely accessed them
+via helper functions which wrote and read to and from block 1.
 
 The next 128 blocks contain the 2048 iNodes. We made these iNodes 32 bytes each, so they fit perfectly into the blocks. 
-Whenever files or directories are created, blocks for these processes are allocated for afterwards using the remaining blocks. 
+Whenever files or directories are created, blocks for these processes are allocated for afterwards using the remaining blocks. We accessed
+these blocks using helper functions, 
 
 Whenever changes are made to iNodes, we immediately write these changes to disk using helperFunctions, so that in the event the system crashes, 
 the information is still stored in the disk. 
@@ -32,8 +34,8 @@ these are errors. In addition, we have to check if there is sufficient space in 
 If so, we increment the link count of the iNode and store a new directory entry with name newFile. We then copy this entry into the disk, and then update the inode in disk.
 
 The unlink function is implemented similarly. First we check if there even exists an entry with fileName for the current_directory. Then we check if this entry 
-corresponds to a FILE (if it is a directory return -1). If the linkCount is 1, check to see if the openCount is zero and then remove the file entirely by freeing its
-iNode id and blocks and removing its directory entry. Otherwise, we decrement linkCount and update the linkCount to the disk.
+corresponds to a FILE (if it is a directory return -1). If the linkCount is 1 (meaning this is the only remaining entry with the given iNode) and check to see if the openCount is zero as well and then remove the file entirely by freeing its
+iNode id and blocks. Regardless of linkCount, we remove the directory entry of the current iNode. We decrement linkCount and update the linkCount to the disk.
 
-I apologize for my minimal completion of this assignment. I tried my level best and spent 67-75 hours working on this, but
+I apologize for my minimal completion of this assignment. I tried my level best and spent 80-88 hours working on this, but
 it ultimately was not enough.
