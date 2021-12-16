@@ -66,7 +66,7 @@ def remove_parent_test():
 
 # attempts to change directories into a file
 def change_directory_test():
-    print('****Remove Failure****')
+    print('****CD Failure****')
     issue('mkfs')
     issue('open randomfile 3')
     issue('mkdir directory') 
@@ -77,11 +77,25 @@ def change_directory_test():
     
 # attempts to close an unopened file descriptor
 def close_unopened_test():
-    print('****Remove Failure****')
+    print('****Close Failure****')
     issue('mkfs')
     issue('open randomfile 3') # File handle is: 0
     issue('open happy 3') # File handle is: 1
     issue('close 2') # should fail
+    print do_exit()
+    print('***************')
+    sys.stdout.flush()
+    
+# attempts to remove a directory contained in a different directory
+# below first is a directory in the file system, but is not a 
+# subdirectory of second, so rmdir should fail here
+def remove_failure_test():
+    print('****Remove Directory Failure****')
+    issue('mkfs')
+    issue('mkdir first') 
+    issue('mkdir second') 
+    issue('cd second') 
+    issue('rmdir first') # should fail
     print do_exit()
     print('***************')
     sys.stdout.flush()
@@ -100,5 +114,7 @@ spawn_lnxsh()
 change_directory_test()
 spawn_lnxsh()
 close_unopened_test()
+spawn_lnxsh()
+remove_failure_test()
 # Verify that file system hasn't grow too large
 check_fs_size()
