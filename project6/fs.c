@@ -171,7 +171,7 @@ fs_close( int fd) {
 int 
 fs_read( int fd, char *buf, int count) {
     // fd needs to be a valid descriptor index, and this needs to be in use
-    if (fd < 0 || fd > MAX_FDS || !fds[fd].inUse) return -1;
+    if (fd < 0 || fd > MAX_FDS || !fds[fd].inUse || fds[fd].flag == FS_O_WRONLY) return -1;
 
     i_node_t node;
     file_descriptor_t descriptor = fds[fd];
@@ -179,8 +179,6 @@ fs_read( int fd, char *buf, int count) {
 
     // read files only
     if (node.type != FILE_TYPE) return -1;
-    // if reading count bytes from the offset exceeds the size, this is an error
-    if (count > node.size - fds[fd].offset) return -1;
     int bytesRead = 0;
 
     while (bytesRead < count && descriptor.offset + bytesRead < node.size) {
@@ -189,7 +187,7 @@ fs_read( int fd, char *buf, int count) {
         int currentBlockOffset = (descriptor.offset + bytesRead) % BLOCK_SIZE;
         int bytesToRead = count;
        
-        if (currentBlockOffset + count > BLOCK_SIZE*currentBlock) {
+        if (currentBlockOffset + count >= BLOCK_SIZE*(currentBlock+1)) {
             bytesToRead = BLOCK_SIZE * (currentBlock + 1) - currentBlockOffset;
         }
 
@@ -205,7 +203,7 @@ fs_read( int fd, char *buf, int count) {
 
 int 
 fs_write( int fd, char *buf, int count) {
-    if (fd < 0 || fd > MAX_FDS || !fds[fd].inUse) return -1;
+    if (fd < 0 || fd > MAX_FDS || !fds[fd].inUse || fds[fd].flag == FS_O_RDONLY) return -1;
 
     file_descriptor_t descriptor = fds[fd];
     i_node_t node;
@@ -222,7 +220,7 @@ fs_write( int fd, char *buf, int count) {
         int currentBlockOffset = (node.size + bytesPadded) % BLOCK_SIZE;
         bytesToPad = (descriptor.offset - node.size - bytesPadded);
        
-        if (currentBlockOffset + count > BLOCK_SIZE*currentBlock) {
+        if (currentBlockOffset + count >= BLOCK_SIZE*(currentBlock+1)) {
             bytesToPad = BLOCK_SIZE * (currentBlock + 1) - currentBlockOffset;
         }
        
@@ -238,7 +236,7 @@ fs_write( int fd, char *buf, int count) {
         int currentBlockOffset = (descriptor.offset + bytesWritten) % BLOCK_SIZE;
         bytesToWrite = count - bytesWritten;
        
-        if (currentBlockOffset + count > BLOCK_SIZE*currentBlock) {
+        if (currentBlockOffset + count >= BLOCK_SIZE*(currentBlock+1)) {
             bytesToWrite = BLOCK_SIZE * (currentBlock + 1) - currentBlockOffset;
         }
 
@@ -308,75 +306,7 @@ fs_rmdir( char *fileName) {
     // remove the node corresponding to this entry
     free_inode(iNode);
     return 0;
-    /*
-    dir_entry_t last_entry;
-    char tempBlock[BLOCK_SIZE];
-    int lastBlock = parentNode.size / BLOCK_SIZE;
-    int lastOffset = parentNode.size % BLOCK_SIZE;
-
-    if(lastOffset == 0) {
-        lastBlock -= 1;
-        lastOffset = 7 * sizeof(dir_entry_t);
-    } else {
-        lastOffset -= sizeof(dir_entry_t);
-    }
-
-    block_read(fs_dataBlock(parentNode.blocks[lastBlock]), tempBlock);
-    bcopy((unsigned char *)&tempBlock[lastOffset], (unsigned char *)&last_entry, sizeof(dir_entry_t));
-
-    // For each block of a directory, as long as there are entries left to read
-    int block;
-    int entries = parentNode.size / sizeof(dir_entry_t);
-    int nodeFound = 0;
-    int currentInode = 0;
-    for (block = 0; block < BLOCKS_PER_INODE && entries > 0; block++) {
-        char currentBlock[BLOCK_SIZE];
-        block_read(fs_dataBlock(parentNode.blocks[block]), currentBlock);
-
-        int entries_in_block = entries;
-        if (entries_in_block > DIRECTORY_ENTRIES_PER_BLOCK) entries_in_block = DIRECTORY_ENTRIES_PER_BLOCK;
-        int entry_index;
-
-        for (entry_index = 0; entry_index < entries_in_block; entry_index++) {
-            dir_entry_t *current_entry = (dir_entry_t*)currentBlock + entry_index;
-            if (same_string(current_entry->name, fileName)) {
-                // Overwrite this with the last node
-                currentInode = current_entry->iNode;
-                i_node_t currentNode;
-                read_inode(currentInode, (char *)&currentNode);
-
-                // If the directory to remove is not empty, error out
-                // if (currentNode.size != 2*sizeof(dir_entry_t)) return -1;
-
-                int i;
-                for (i = 0; i < 8; i++) {
-                    allocmap_setstatus(BLOCK_MAP, currentNode.blocks[i], NOT_IN_USE);
-                }
-
-                bcopy((unsigned char *)&last_entry, (unsigned char *)current_entry, sizeof(dir_entry_t));
-
-                nodeFound = 1;
-                break;
-            }
-        }
-
-        entries -= DIRECTORY_ENTRIES_PER_BLOCK;
-        if (nodeFound) {
-            break;
-        }
-    }
-
-    // If we deleted a directory entry by replacing it with the last item,
-    if (nodeFound) {
-        // Update the parent node
-        parentNode.size -= sizeof(dir_entry_t);
-        write_inode(current_directory_node, (char *)&parentNode);
-        allocmap_setstatus(INODE_MAP, currentInode, NOT_IN_USE);
-        return 0;
-    }
-
-    return -1;
-    */
+    
 }
 
 int 
