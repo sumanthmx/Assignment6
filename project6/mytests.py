@@ -85,5 +85,7 @@ spawn_lnxsh()
 multiple_names_test()
 spawn_lnxsh()
 remove_parent_test()
+spawn_lnxsh()
+change_directory_test()
 # Verify that file system hasn't grow too large
 check_fs_size()
