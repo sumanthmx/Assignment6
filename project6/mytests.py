@@ -64,7 +64,17 @@ def remove_parent_test()
     print('***************')
     sys.stdout.flush()
 
-
+# attempts to change directories into a file
+def change_directory_test()
+    print('****Remove Failure****')
+    issue('mkfs')
+    issue('open randomfile 3')
+    issue('mkdir directory') 
+    issue('cd randomfile') # should fail
+    print do_exit()
+    print('***************')
+    sys.stdout.flush()
+    
 print "......Starting my tests\n\n"
 sys.stdout.flush()
 spawn_lnxsh()
